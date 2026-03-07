@@ -1,7 +1,8 @@
 "use client"
-import React, { createContext, useContext, useEffect, useState } from "react"
+import React, { createContext, useContext, useEffect, useState, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { Settings } from "@/lib/types"
+import type { SupabaseClient } from "@supabase/supabase-js"
 
 const defaultSettings: Settings = {
   id: "main",
@@ -44,14 +45,23 @@ const SettingsContext = createContext<SettingsContextType>({
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>(defaultSettings)
-  const supabase = createClient()
+  const supabaseRef = useRef<SupabaseClient | null>(null)
+
+  const getSupabase = () => {
+    if (!supabaseRef.current) {
+      supabaseRef.current = createClient()
+    }
+    return supabaseRef.current
+  }
 
   const refreshSettings = async () => {
+    const supabase = getSupabase()
     const { data } = await supabase.from("settings").select("*").eq("id", "main").single()
     if (data) setSettings(data as Settings)
   }
 
   const updateSettings = async (updates: Partial<Settings>) => {
+    const supabase = getSupabase()
     const merged = { ...settings, ...updates, updated_at: new Date().toISOString() }
     const { data } = await supabase
       .from("settings")
@@ -62,6 +72,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
+    const supabase = getSupabase()
     refreshSettings()
 
     const channel = supabase
