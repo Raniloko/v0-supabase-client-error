@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { DM_Sans, Geist_Mono } from 'next/font/google'
+import { DM_Sans, Geist_Mono, Bebas_Neue } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { ToastProvider } from '@/lib/toast-context'
@@ -7,6 +7,7 @@ import { SettingsProvider } from '@/lib/settings-context'
 
 const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-sans' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-mono' })
+const bebasNeue = Bebas_Neue({ subsets: ['latin'], weight: '400', variable: '--font-display' })
 
 export const metadata: Metadata = {
   title: 'Rondo Admin',
@@ -31,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="de" className={`${dmSans.variable} ${geistMono.variable}`}>
+    <html lang="de" className={`${dmSans.variable} ${geistMono.variable} ${bebasNeue.variable}`}>
       <body className="font-sans antialiased">
         <SettingsProvider>
           <ToastProvider>
