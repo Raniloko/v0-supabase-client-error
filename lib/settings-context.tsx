@@ -49,7 +49,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   const getSupabase = () => {
     if (!supabaseRef.current) {
-      supabaseRef.current = createClient()
+      try {
+        supabaseRef.current = createClient()
+      } catch (error) {
+        console.error("[v0] Failed to create Supabase client:", error)
+        throw error
+      }
     }
     return supabaseRef.current
   }
