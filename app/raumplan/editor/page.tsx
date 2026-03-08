@@ -5,13 +5,13 @@ import { createClient } from "@/lib/supabase/client"
 import {
   Plus, Save, Trash2, RotateCcw, Grid, Lock, Unlock,
   ZoomIn, ZoomOut, Maximize2, Copy, Layers,
-  AlignLeft, AlignCenter, Move, MousePointer, X,
+  AlignLeft, AlignCenter, Move, MousePointer, X, Tv,
 } from "lucide-react"
 import { RoomGeometry, AREA_TABLE_DEFS, AREA_CANVAS } from "@/lib/floor-geometry"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ObjType    = "table" | "billiard"
+type ObjType    = "table" | "billiard" | "tv"
 type StatusType = "free" | "reserved" | "occupied" | "blocked"
 
 interface FloorObject {
@@ -51,6 +51,8 @@ const DEFAULT_W  = 58   // must match floor-geometry hw+6
 const DEFAULT_H  = 54   // must match floor-geometry vh+6
 const BILLIARD_W = 220  // must match floor-geometry billiard w
 const BILLIARD_H = 136  // must match floor-geometry billiard h
+const TV_W       = 120  // default TV width
+const TV_H       = 72   // default TV height
 const GRID_SZ    = 10
 
 // ─── Per-Area Default Layouts ─────────────────────────────────────────────────
@@ -255,6 +257,91 @@ function BilliardShape({ obj, selected, onPointerDown, onDoubleTap }: {
   )
 }
 
+// ─── TV Shape ─────────────────────────────────────────────────────────────────
+
+function TVShape({ obj, selected, onPointerDown, onDoubleTap }: {
+  obj: FloorObject
+  selected: boolean
+  onPointerDown: (e: React.PointerEvent, id: string) => void
+  onDoubleTap: (id: string) => void
+}) {
+  const w  = obj.width  ?? TV_W
+  const h  = obj.height ?? TV_H
+  const cx = obj.x + w / 2
+  const cy = obj.y + h / 2
+  const hitPad = 10
+
+  // Stand dimensions
+  const standW = Math.round(w * 0.28)
+  const standH = Math.round(h * 0.14)
+  const legW   = Math.round(w * 0.08)
+  const legH   = Math.round(h * 0.08)
+
+  return (
+    <g
+      transform={`rotate(${obj.rotation}, ${cx}, ${cy})`}
+      onPointerDown={e => onPointerDown(e, obj.id)}
+      onDoubleClick={() => onDoubleTap(obj.id)}
+      style={{ cursor: obj.locked ? "not-allowed" : "move", touchAction: "none" }}
+    >
+      {/* Hit area */}
+      <rect x={obj.x - hitPad} y={obj.y - hitPad}
+        width={w + hitPad * 2} height={h + hitPad * 2}
+        fill="transparent" stroke="none" />
+
+      {selected && (
+        <rect x={obj.x - 8} y={obj.y - 8} width={w + 16} height={h + 16} rx={7}
+          fill="none" stroke="#c9a84c" strokeWidth={2} strokeDasharray="5 3" opacity={0.85} />
+      )}
+
+      {/* TV outer bezel */}
+      <rect x={obj.x} y={obj.y} width={w} height={h - standH - legH} rx={5}
+        fill="#1a1a2e" stroke="#3a3a5a" strokeWidth={2.5} />
+
+      {/* Screen */}
+      <rect x={obj.x + 6} y={obj.y + 6} width={w - 12} height={h - standH - legH - 12} rx={3}
+        fill="#0d1a2e" />
+
+      {/* Screen glow */}
+      <rect x={obj.x + 6} y={obj.y + 6} width={w - 12} height={h - standH - legH - 12} rx={3}
+        fill="rgba(41,182,246,0.08)" />
+
+      {/* Screen content lines */}
+      <line x1={obj.x + 12} y1={cy - 8} x2={obj.x + w - 12} y2={cy - 8}
+        stroke="rgba(255,255,255,0.12)" strokeWidth={1} />
+      <line x1={obj.x + 12} y1={cy} x2={obj.x + w - 12} y2={cy}
+        stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
+      <line x1={obj.x + 12} y1={cy + 8} x2={obj.x + w - 12} y2={cy + 8}
+        stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
+
+      {/* Stand neck */}
+      <rect x={cx - legW / 2} y={obj.y + h - standH - legH} width={legW} height={legH}
+        fill="#2a2a3e" />
+
+      {/* Stand base */}
+      <rect x={cx - standW / 2} y={obj.y + h - standH} width={standW} height={standH} rx={3}
+        fill="#2a2a3e" stroke="#3a3a5a" strokeWidth={1} />
+
+      {/* Power LED */}
+      <circle cx={obj.x + w - 10} cy={obj.y + h - standH - legH - 6} r={2.5}
+        fill="#1db954" opacity={0.9} />
+
+      {/* Label */}
+      <text x={cx} y={obj.y + (h - standH - legH) / 2 + 5} textAnchor="middle"
+        fill="rgba(255,255,255,0.55)" fontSize={11} fontWeight="bold"
+        fontFamily="'Bebas Neue', cursive"
+        style={{ pointerEvents: "none", userSelect: "none" }}>
+        {obj.label || "TV"}
+      </text>
+
+      {obj.locked && (
+        <text x={cx + 16} y={obj.y + 14} fill="#c9a84c" fontSize={9}
+          style={{ pointerEvents: "none", userSelect: "none" }}>&#128274;</text>
+      )}
+    </g>
+  )
+}
+
 // ─── Properties Panel (touch-friendly slide-up / side panel) ─────────────────
 
 function PropsPanel({ obj, onChange, onDelete, onDuplicate, onLockToggle, onClose }: {
@@ -322,7 +409,7 @@ function PropsPanel({ obj, onChange, onDelete, onDuplicate, onLockToggle, onClos
             padding: "3px 8px", borderRadius: 5, fontSize: 11, fontWeight: 700,
             background: "rgba(201,168,76,0.1)", color: "#c9a84c",
           }}>
-            {obj.type === "billiard" ? "Billard" : "Tisch"}
+            {obj.type === "billiard" ? "Billard" : obj.type === "tv" ? "Fernseher" : "Tisch"}
           </span>
         </div>
 
@@ -346,7 +433,7 @@ function PropsPanel({ obj, onChange, onDelete, onDuplicate, onLockToggle, onClos
         </div>
 
         {/* Seats */}
-        {obj.type !== "billiard" && (
+        {obj.type !== "billiard" && obj.type !== "tv" && (
           <div className="flex flex-col gap-2">
             <label style={{ color: "#666", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
               Sitzplaetze: {obj.seats}
@@ -432,14 +519,14 @@ function PropsPanel({ obj, onChange, onDelete, onDuplicate, onLockToggle, onClos
 
 function Toolbar({
   tool, setTool, snapOn, setSnapOn, showGrid, setShowGrid, zoom, setZoom,
-  onAddTable, onAddBilliard, onSave, saving, hasUnsaved,
+  onAddTable, onAddBilliard, onAddTV, onSave, saving, hasUnsaved,
   onUndo, onRedo, canUndo, canRedo, selCount, onDeleteSel, onAlignH, onAlignV,
 }: {
   tool: string; setTool: (t: string) => void
   snapOn: boolean; setSnapOn: (v: boolean) => void
   showGrid: boolean; setShowGrid: (v: boolean) => void
   zoom: number; setZoom: (v: number) => void
-  onAddTable: () => void; onAddBilliard: () => void
+  onAddTable: () => void; onAddBilliard: () => void; onAddTV: () => void
   onSave: () => void; saving: boolean; hasUnsaved: boolean
   onUndo: () => void; onRedo: () => void; canUndo: boolean; canRedo: boolean
   selCount: number; onDeleteSel: () => void
@@ -498,6 +585,15 @@ function Toolbar({
           color: "#2a9d5c", cursor: "pointer", flexShrink: 0,
         }}>
         <Plus className="w-4 h-4" /> Billard
+      </button>
+      <button onClick={onAddTV}
+        style={{
+          display: "flex", alignItems: "center", gap: 6,
+          padding: "0 14px", height: 44, borderRadius: 8, fontSize: 13, fontWeight: 700,
+          background: "rgba(41,182,246,0.1)", border: "1px solid rgba(41,182,246,0.3)",
+          color: "#29b6f6", cursor: "pointer", flexShrink: 0,
+        }}>
+        <Tv className="w-4 h-4" /> Fernseher
       </button>
 
       <Sep />
@@ -726,8 +822,8 @@ export function EmbeddedEditor({ initialArea = "restaurant140" }: { initialArea?
           label:     r.label as string,
           area_id:   r.area_id as string,
           data_json: (r.data_json as Record<string, unknown>) ?? {},
-          width:     r.type === "billiard" ? BILLIARD_W : (r.width ? Number(r.width) : DEFAULT_W),
-          height:    r.type === "billiard" ? BILLIARD_H : (r.height ? Number(r.height) : DEFAULT_H),
+          width:     r.type === "billiard" ? BILLIARD_W : r.type === "tv" ? (r.width ? Number(r.width) : TV_W) : (r.width ? Number(r.width) : DEFAULT_W),
+          height:    r.type === "billiard" ? BILLIARD_H : r.type === "tv" ? (r.height ? Number(r.height) : TV_H) : (r.height ? Number(r.height) : DEFAULT_H),
           locked:    false,
         }))
         setObjects(mapped)
@@ -741,9 +837,14 @@ export function EmbeddedEditor({ initialArea = "restaurant140" }: { initialArea?
   // ── Keyboard shortcuts ──
   useEffect(() => {
     const handle = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase()
+      const isInputFocused = tag === "input" || tag === "textarea" || tag === "select"
+        || (e.target as HTMLElement)?.isContentEditable
+
       if ((e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey)) { e.preventDefault(); undo() }
       if ((e.key === "y" && (e.ctrlKey || e.metaKey)) || (e.key === "z" && e.ctrlKey && e.shiftKey)) { e.preventDefault(); redo() }
-      if ((e.key === "Delete" || e.key === "Backspace") && selectedIds.size > 0) deleteSelected()
+      // Only trigger Delete/Backspace when NOT typing in an input
+      if (!isInputFocused && (e.key === "Delete" || e.key === "Backspace") && selectedIds.size > 0) deleteSelected()
       if (e.key === "Escape") setSelectedIds(new Set())
       if (e.key === "a" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); setSelectedIds(new Set(visible.map(o => o.id))) }
     }
@@ -755,7 +856,7 @@ export function EmbeddedEditor({ initialArea = "restaurant140" }: { initialArea?
   // ── Save ──
   const save = async () => {
     setSaving(true)
-    const payload = objects.map(({ locked, width, height, ...rest }) => ({
+    const payload = objects.map(({ locked, ...rest }) => ({
       ...rest,
       updated_at: new Date().toISOString(),
     }))
@@ -820,6 +921,19 @@ export function EmbeddedEditor({ initialArea = "restaurant140" }: { initialArea?
     }])
     setSelectedIds(new Set([id]))
     toast("info", "Billardtisch hinzugefuegt")
+  }
+
+  const addTV = () => {
+    const id = uid()
+    mutate(prev => [...prev, {
+      id, type: "tv" as ObjType,
+      x: snap(100 + Math.random() * 200, snapOn), y: snap(60 + Math.random() * 120, snapOn),
+      rotation: 0, seats: 0, status: "free",
+      label: `TV ${objects.filter(o => o.type === "tv").length + 1}`,
+      area_id: activeArea, data_json: {}, width: TV_W, height: TV_H, locked: false,
+    }])
+    setSelectedIds(new Set([id]))
+    toast("info", "Fernseher hinzugefuegt")
   }
 
   const alignH = () => {
@@ -974,7 +1088,7 @@ export function EmbeddedEditor({ initialArea = "restaurant140" }: { initialArea?
         snapOn={snapOn} setSnapOn={setSnapOn}
         showGrid={showGrid} setShowGrid={setShowGrid}
         zoom={zoom} setZoom={setZoom}
-        onAddTable={addTable} onAddBilliard={addBilliard}
+        onAddTable={addTable} onAddBilliard={addBilliard} onAddTV={addTV}
         onSave={save} saving={saving} hasUnsaved={hasUnsaved}
         onUndo={undo} onRedo={redo}
         canUndo={history.length > 0} canRedo={future.length > 0}
@@ -987,7 +1101,12 @@ export function EmbeddedEditor({ initialArea = "restaurant140" }: { initialArea?
         <AreaSelector active={activeArea} onChange={a => { setActiveArea(a); setSelectedIds(new Set()) }} />
 
         {/* Canvas */}
-        <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+        <div style={{
+          flex: 1, position: "relative", overflow: "hidden",
+          outline: "2px solid rgba(201,168,76,0.35)",
+          outlineOffset: "-2px",
+          boxSizing: "border-box",
+        }}>
           {/* Object count */}
           <div style={{
             position: "absolute", top: 12, left: 12, zIndex: 10,
@@ -1034,6 +1153,14 @@ export function EmbeddedEditor({ initialArea = "restaurant140" }: { initialArea?
                 {visible.map(obj =>
                   obj.type === "billiard" ? (
                     <BilliardShape
+                      key={obj.id}
+                      obj={obj}
+                      selected={selectedIds.has(obj.id)}
+                      onPointerDown={handlePointerDown}
+                      onDoubleTap={id => setSelectedIds(new Set([id]))}
+                    />
+                  ) : obj.type === "tv" ? (
+                    <TVShape
                       key={obj.id}
                       obj={obj}
                       selected={selectedIds.has(obj.id)}
