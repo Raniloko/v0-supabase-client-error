@@ -1,7 +1,17 @@
 "use client"
+import dynamic from "next/dynamic"
 import { useEffect, useRef, useState } from "react"
-import { EmbeddedEditor } from "./editor/page"
 import { RoomGeometry, AREA_TABLE_DEFS, AREA_CANVAS } from "@/lib/floor-geometry"
+
+// Dynamic import prevents SSR crash – the editor uses browser-only APIs
+const EmbeddedEditor = dynamic(
+  () => import("./editor/page").then(m => ({ default: m.EmbeddedEditor })),
+  { ssr: false, loading: () => (
+    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", color:"#555", fontSize:13 }}>
+      Editor wird geladen…
+    </div>
+  )},
+)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

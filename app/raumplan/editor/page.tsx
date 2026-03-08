@@ -883,14 +883,15 @@ export function EmbeddedEditor({ initialArea = "restaurant140" }: { initialArea?
       setPan({ x: panRef.current.origPan.x + dx, y: panRef.current.origPan.y + dy })
       return
     }
-    if (!dragRef.current) return
+    if (!dragRef.current || !dragRef.current.origPositions) return
 
     const pt = svgPoint(e.clientX, e.clientY)
     const dx = pt.x - dragRef.current.startX
     const dy = pt.y - dragRef.current.startY
 
     setObjects(prev => prev.map(o => {
-      const orig = dragRef.current!.origPositions[o.id]
+      if (!dragRef.current) return o
+      const orig = dragRef.current.origPositions[o.id]
       if (!orig || o.locked) return o
       return { ...o, x: snap(orig.x + dx, snapOn), y: snap(orig.y + dy, snapOn) }
     }))
