@@ -517,186 +517,132 @@ function FloorPlanSVG({
 }) {
   const tbl = (id: string) => tables.find(t => t.id === id)!
 
+  // Cross-table shorthand
+  const TC = (id: string, cx: number, cy: number, vw: number, vh: number, hw: number, hh: number,
+    cT = 2, cB = 2, cL = 1, cR = 1) => {
+    const t = tbl(id)
+    return (
+      <TableCross
+        cx={cx} cy={cy} vw={vw} vh={vh} hw={hw} hh={hh}
+        status={t.status} number={t.number}
+        pax={t.pax} guestName={t.guestName} time={t.startTime}
+        onClick={() => onTableClick(t)} isSelected={selectedId === id}
+        chairT={cT} chairB={cB} chairL={cL} chairR={cR}
+      />
+    )
+  }
+
   return (
     <svg
-      viewBox="0 0 820 560"
+      viewBox="0 0 860 570"
       preserveAspectRatio="xMidYMid meet"
       className="w-full h-full"
       style={{ display: "block" }}
     >
       <defs>
-        <radialGradient id="centerGlow" cx="50%" cy="55%" r="45%">
-          <stop offset="0%" stopColor="rgba(201,168,76,0.07)" />
+        <radialGradient id="centerGlow" cx="52%" cy="54%" r="42%">
+          <stop offset="0%" stopColor="rgba(255,140,0,0.09)" />
           <stop offset="100%" stopColor="rgba(0,0,0,0)" />
         </radialGradient>
-        <radialGradient id="bgGrad" cx="50%" cy="50%" r="70%">
-          <stop offset="0%" stopColor="#141420" />
-          <stop offset="100%" stopColor="#0c0c10" />
+        <radialGradient id="bgGrad" cx="50%" cy="50%" r="75%">
+          <stop offset="0%" stopColor="#161622" />
+          <stop offset="100%" stopColor="#0c0c12" />
         </radialGradient>
       </defs>
-      <rect x={0} y={0} width={820} height={560} fill="url(#bgGrad)" />
-      <rect x={0} y={0} width={820} height={560} fill="url(#centerGlow)" />
 
-      {/* ── TOP-LEFT: RONDO brand box ── */}
-      <rect x={6} y={6} width={220} height={148} rx={4}
-        fill="rgba(16,16,24,0.92)" stroke="#28283a" strokeWidth={1.5} />
-      {/* Bar counter */}
-      <rect x={164} y={72} width={50} height={68} rx={3}
-        fill="rgba(60,40,20,0.7)" stroke="rgba(201,168,76,0.14)" strokeWidth={1} />
-      <text x={189} y={108} textAnchor="middle" fill="rgba(201,168,76,0.28)" fontSize={7}
-        fontFamily="'Bebas Neue', cursive">BAR</text>
-      {/* RONDO text */}
-      <text x={50} y={54} fill="#c9a84c" fontSize={22}
-        fontFamily="'Bebas Neue', cursive" letterSpacing="0.12em" opacity={0.9}>RONDO</text>
-      <text x={52} y={67} fill="#3a3a52" fontSize={7} letterSpacing="0.2em" opacity={0.8}>GOOD TIMES</text>
-      <text x={14} y={138} fontSize={26} opacity={0.72}>🌿</text>
-      <line x1={6}   y1={152} x2={226} y2={152} stroke="#28283a" strokeWidth={1.5} />
-      <line x1={226} y1={6}   x2={226} y2={152} stroke="#28283a" strokeWidth={1.5} />
+      {/* Background */}
+      <rect x={0} y={0} width={860} height={570} fill="url(#bgGrad)" />
+      <rect x={0} y={0} width={860} height={570} fill="url(#centerGlow)" />
 
-      {/* ── TWO SCREEN BOXES top right ── */}
-      <rect x={460} y={6} width={148} height={82} rx={4}
-        fill="rgba(10,10,16,0.96)" stroke="rgba(255,255,255,0.06)" strokeWidth={1.2} />
-      <text x={534} y={50} textAnchor="middle" fill="#1e1e2c" fontSize={14}
-        fontFamily="'Bebas Neue', cursive" letterSpacing="0.1em">SCREEN</text>
-      <rect x={624} y={6} width={140} height={82} rx={4}
-        fill="rgba(10,10,16,0.96)" stroke="rgba(255,255,255,0.06)" strokeWidth={1.2} />
-      <text x={694} y={50} textAnchor="middle" fill="#1e1e2c" fontSize={14}
-        fontFamily="'Bebas Neue', cursive" letterSpacing="0.1em">SCREEN</text>
+      {/* ── BOTTOM-LEFT: RONDO brand box ── */}
+      <rect x={6} y={390} width={190} height={170} rx={4}
+        fill="rgba(13,13,20,0.94)" stroke="#25253a" strokeWidth={1.5} />
+      <text x={95} y={468} textAnchor="middle" fill="#c9a84c" fontSize={28}
+        fontFamily="'Bebas Neue', cursive" letterSpacing="0.15em" opacity={0.95}>RONDO</text>
+      <text x={95} y={483} textAnchor="middle" fill="#3a3a52" fontSize={8}
+        letterSpacing="0.25em">GOOD TIMES</text>
+      <text x={20} y={550} fontSize={28} opacity={0.65}>🌿</text>
+      <text x={155} y={555} fontSize={20} opacity={0.5}>🌿</text>
 
-      {/* ── HORIZONTAL DIVIDER ── */}
-      <line x1={226} y1={152} x2={460} y2={152} stroke="#28283a" strokeWidth={1.5} />
+      {/* ── TOP-RIGHT: Two screen boxes ── */}
+      <rect x={560} y={8} width={140} height={76} rx={4}
+        fill="rgba(8,8,14,0.97)" stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
+      <text x={630} y={50} textAnchor="middle" fill="#1c1c2a" fontSize={13}
+        fontFamily="'Bebas Neue', cursive" letterSpacing="0.12em">SCREEN</text>
+      <rect x={714} y={8} width={138} height={76} rx={4}
+        fill="rgba(8,8,14,0.97)" stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
+      <text x={783} y={50} textAnchor="middle" fill="#1c1c2a" fontSize={13}
+        fontFamily="'Bebas Neue', cursive" letterSpacing="0.12em">SCREEN</text>
 
-      {/* ── LEFT ENCLOSED RESTAURANT BOX ── */}
-      <rect x={6} y={152} width={220} height={398} rx={4}
-        fill="rgba(14,14,22,0.88)" stroke="#28283a" strokeWidth={1.5} />
+      {/* ── ENCLOSED LEFT BOX (restaurant tables 61-65) ── */}
+      <rect x={6} y={220} width={190} height={166} rx={4}
+        fill="rgba(12,12,18,0.85)" stroke="#25253a" strokeWidth={1.5} />
 
-      {/* === TABLES IN LEFT BOX: 2 columns × 3 rows === */}
-      {/* Row 1: T62 (left, blue booked) | T61 (right, blue booked) */}
-      <TableCross cx={62}  cy={205} vw={28} vh={52} hw={56} hh={18}
-        status={tbl("t62").status} number="62" pax={tbl("t62").pax}
-        guestName={tbl("t62").guestName} time={tbl("t62").startTime}
-        onClick={() => onTableClick(tbl("t62"))} isSelected={selectedId === "t62"}
-        chairT={2} chairB={2} chairL={1} chairR={1} />
-      <TableCross cx={162} cy={205} vw={28} vh={52} hw={56} hh={18}
-        status={tbl("t61").status} number="61" pax={tbl("t61").pax}
-        guestName={tbl("t61").guestName} time={tbl("t61").startTime}
-        onClick={() => onTableClick(tbl("t61"))} isSelected={selectedId === "t61"}
-        chairT={2} chairB={2} chairL={1} chairR={1} />
+      {/* Box row 1: T62 left, T61 right */}
+      {TC("t62", 52,  265, 22, 44, 48, 16,  2, 2, 1, 1)}
+      {TC("t61", 146, 265, 22, 44, 48, 16,  2, 2, 1, 1)}
 
-      {/* Row 2: T63 (left, blue) | T60 (right, free) */}
-      <TableCross cx={62}  cy={305} vw={28} vh={52} hw={56} hh={18}
-        status={tbl("t63").status} number="63" pax={tbl("t63").pax}
-        guestName={tbl("t63").guestName} time={tbl("t63").startTime}
-        onClick={() => onTableClick(tbl("t63"))} isSelected={selectedId === "t63"}
-        chairT={2} chairB={2} chairL={1} chairR={1} />
-      <TableCross cx={162} cy={305} vw={28} vh={52} hw={56} hh={18}
-        status={tbl("t60").status} number="60"
-        onClick={() => onTableClick(tbl("t60"))} isSelected={selectedId === "t60"}
-        chairT={2} chairB={2} chairL={1} chairR={1} />
+      {/* Box row 2: T63 left, T60 right */}
+      {TC("t63", 52,  342, 22, 44, 48, 16,  2, 2, 1, 1)}
+      {TC("t60", 146, 342, 22, 44, 48, 16,  2, 2, 1, 1)}
 
-      {/* Row 3: T64 (left, green present) | T65 (right, green present) */}
-      <TableCross cx={62}  cy={413} vw={28} vh={52} hw={56} hh={18}
-        status={tbl("t64").status} number="64" pax={tbl("t64").pax}
-        guestName={tbl("t64").guestName} time={tbl("t64").startTime}
-        onClick={() => onTableClick(tbl("t64"))} isSelected={selectedId === "t64"}
-        chairT={2} chairB={2} chairL={1} chairR={1} />
-      <TableCross cx={162} cy={413} vw={28} vh={52} hw={56} hh={18}
-        status={tbl("t65").status} number="65" pax={tbl("t65").pax}
-        guestName={tbl("t65").guestName} time={tbl("t65").startTime}
-        onClick={() => onTableClick(tbl("t65"))} isSelected={selectedId === "t65"}
-        chairT={2} chairB={2} chairL={1} chairR={1} />
+      {/* ── BOTTOM-LEFT corner: T64 + T65 (below box, outside it) ── */}
+      {TC("t64", 52,  430, 22, 44, 48, 16,  2, 2, 1, 1)}
+      {TC("t65", 146, 430, 22, 44, 48, 16,  2, 2, 1, 1)}
 
-      {/* ── TABLE 30 – top center FREE ── */}
-      <TableCross cx={276} cy={42} vw={20} vh={50} hw={56} hh={20}
-        status={tbl("t30").status} number="30"
-        onClick={() => onTableClick(tbl("t30"))} isSelected={selectedId === "t30"}
-        chairT={2} chairB={2} chairL={1} chairR={1} />
+      {/* ── TABLE 30 – isolated top-left area, FREE ── */}
+      {TC("t30", 256, 56, 20, 46, 52, 18,  2, 2, 1, 1)}
 
-      {/* ── TABLE 10 – top area GOLD reserved ── */}
-      <TableCross cx={422} cy={42} vw={20} vh={50} hw={56} hh={20}
-        status={tbl("t10").status} number="10" pax={tbl("t10").pax}
-        guestName={tbl("t10").guestName} time={tbl("t10").startTime}
-        onClick={() => onTableClick(tbl("t10"))} isSelected={selectedId === "t10"}
-        chairT={2} chairB={2} chairL={1} chairR={1} />
+      {/* ── TABLE 10 – isolated top center, GOLD reserved ── */}
+      {TC("t10", 390, 56, 20, 46, 52, 18,  2, 2, 1, 1)}
 
-      {/* ── CENTER OPEN AREA TABLES ── */}
-      {/* T51 */}
-      <TableCross cx={290} cy={195} vw={20} vh={50} hw={56} hh={18}
-        status={tbl("t51").status} number="51"
-        onClick={() => onTableClick(tbl("t51"))} isSelected={selectedId === "t51"}
-        chairT={2} chairB={2} chairL={1} chairR={1} />
-      {/* T52 */}
-      <TableCross cx={388} cy={195} vw={20} vh={50} hw={56} hh={18}
-        status={tbl("t52").status} number="52"
-        onClick={() => onTableClick(tbl("t52"))} isSelected={selectedId === "t52"}
-        chairT={2} chairB={2} chairL={1} chairR={1} />
-      {/* T50 (larger) */}
-      <TableCross cx={288} cy={285} vw={24} vh={56} hw={64} hh={20}
-        status={tbl("t50").status} number="50"
-        onClick={() => onTableClick(tbl("t50"))} isSelected={selectedId === "t50"}
-        chairT={3} chairB={3} chairL={1} chairR={1} />
-      {/* T53 */}
-      <TableCross cx={386} cy={283} vw={20} vh={52} hw={56} hh={20}
-        status={tbl("t53").status} number="53"
-        onClick={() => onTableClick(tbl("t53"))} isSelected={selectedId === "t53"}
-        chairT={2} chairB={2} chairL={1} chairR={1} />
-      {/* T54 (LARGE) */}
-      <TableCross cx={324} cy={375} vw={28} vh={68} hw={80} hh={28}
-        status={tbl("t54").status} number="54"
-        onClick={() => onTableClick(tbl("t54"))} isSelected={selectedId === "t54"}
-        chairT={3} chairB={3} chairL={2} chairR={2} />
-      {/* T58 */}
-      <TableCross cx={284} cy={466} vw={20} vh={50} hw={56} hh={18}
-        status={tbl("t58").status} number="58"
-        onClick={() => onTableClick(tbl("t58"))} isSelected={selectedId === "t58"}
-        chairT={2} chairB={2} chairL={1} chairR={1} />
-      {/* T67 */}
-      <TableCross cx={378} cy={448} vw={20} vh={50} hw={56} hh={18}
-        status={tbl("t67").status} number="67"
-        onClick={() => onTableClick(tbl("t67"))} isSelected={selectedId === "t67"}
-        chairT={2} chairB={2} chairL={1} chairR={1} />
-      {/* T59 small */}
-      <TableCross cx={265} cy={518} vw={12} vh={28} hw={44} hh={14}
-        status={tbl("t59").status} number="59"
-        onClick={() => onTableClick(tbl("t59"))} isSelected={selectedId === "t59"}
-        chairT={2} chairB={0} chairL={0} chairR={0} />
-      {/* T66 small */}
-      <TableCross cx={358} cy={500} vw={12} vh={28} hw={44} hh={14}
-        status={tbl("t66").status} number="66"
-        onClick={() => onTableClick(tbl("t66"))} isSelected={selectedId === "t66"}
-        chairT={2} chairB={0} chairL={0} chairR={0} />
+      {/* ── CENTER: Row 1 → T52, T53, T54 ── */}
+      {TC("t52", 256, 168, 20, 48, 52, 18,  2, 2, 1, 1)}
+      {TC("t53", 358, 168, 20, 48, 52, 18,  2, 2, 1, 1)}
+      {/* T54 is a LARGE elongated table */}
+      {TC("t54", 470, 176, 26, 54, 90, 22,  3, 3, 1, 1)}
+
+      {/* ── CENTER: Row 2 → T51, T50, T58 ── */}
+      {TC("t51", 256, 280, 20, 48, 52, 18,  2, 2, 1, 1)}
+      {TC("t50", 358, 282, 22, 52, 58, 20,  3, 3, 1, 1)}
+      {TC("t58", 474, 286, 20, 48, 52, 18,  2, 2, 1, 1)}
+
+      {/* ── CENTER: Row 3 → T67, T66 ── */}
+      {TC("t67", 310, 390, 20, 48, 52, 18,  2, 2, 1, 1)}
+      {TC("t66", 418, 390, 20, 48, 52, 18,  2, 2, 1, 1)}
+
+      {/* T59 small – bottom area */}
+      {TC("t59", 256, 478, 12, 26, 40, 13,  1, 1, 0, 0)}
 
       {/* ── BILLIARD TABLES ──
-            In the screenshot (portrait), billiard 1 & 2 appear side-by-side.
-            Rotated 90° back to landscape → they stack vertically:
-            Billard 1 at top, Billard 2 below it (offset right), Billard 3 diagonal to the right.
+            Screenshot (landscape): B1 top-left, B2 top-right (side by side),
+            B3 diagonal rotated, positioned below and between B1/B2.
       ── */}
-      {/* Billard 1 – upright, FREE, top */}
+      {/* Billard 1 – top, FREE */}
       <BilliardTableSVG
-        x={486} y={100} w={108} h={168}
+        x={574} y={100} w={118} h={176}
         status={tbl("b1").status} label="BILLARD 1"
         onClick={() => onTableClick(tbl("b1"))} isSelected={selectedId === "b1"}
       />
-      {/* Billard 2 – upright, GOLD reserved (Michelik), below and offset right */}
+      {/* Billard 2 – top right, GOLD (Michelik) */}
       <BilliardTableSVG
-        x={620} y={100} w={108} h={168}
+        x={718} y={100} w={118} h={176}
         status={tbl("b2").status} label="BILLARD 2"
         guestName={tbl("b2").guestName}
         time={`${tbl("b2").startTime} – ${tbl("b2").endTime}`}
         onClick={() => onTableClick(tbl("b2"))} isSelected={selectedId === "b2"}
       />
-      {/* Billard 3 – diagonal rotated, bottom right */}
+      {/* Billard 3 – diagonal, bottom-right */}
       <BilliardTableSVG
-        x={490} y={360} w={152} h={96}
+        x={600} y={355} w={164} h={102}
         status={tbl("b3").status} label="BILLARD 3"
         onClick={() => onTableClick(tbl("b3"))} isSelected={selectedId === "b3"}
-        transform="rotate(-34, 566, 408)"
+        transform="rotate(-32, 682, 406)"
       />
 
-      {/* ── DECORATIVE PLANTS ── */}
-      <text x={420} y={535} fontSize={24} opacity={0.6}>🌿</text>
-      <text x={720} y={535} fontSize={22} opacity={0.5}>🌿</text>
-      <text x={450} y={168} fontSize={13} opacity={0.45}>🌿</text>
+      {/* Decorative plants */}
+      <text x={510} y={490} fontSize={20} opacity={0.5}>🌿</text>
+      <text x={840} y={555} fontSize={18} opacity={0.4}>🌿</text>
     </svg>
   )
 }
@@ -931,7 +877,7 @@ function Topbar({ onNewReservation }: { onNewReservation: () => void }) {
   )
 }
 
-// ─── Area Tabs Bar (horizontal, sits ABOVE the floor plan) ─────────────────────
+// ─── Area Tabs Bar (horizontal scrollable, sits ABOVE the floor plan) ────────────
 
 function AreaTabsBar({
   activeArea, onAreaChange, addToast,
@@ -940,61 +886,94 @@ function AreaTabsBar({
   onAreaChange: (id: string) => void
   addToast: (type: Toast["type"], text: string, sub: string) => void
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+
   return (
-    <div className="flex items-center flex-shrink-0"
+    <div
+      className="flex items-stretch flex-shrink-0"
       style={{
-        height: 36,
-        background: "#13131a",
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
-        paddingLeft: 6,
-        paddingRight: 10,
-        gap: 2,
+        height: 46,
+        background: "#12121c",
+        borderBottom: "1px solid rgba(255,255,255,0.07)",
       }}
     >
-      {/* Stats strip – left side */}
-      <div className="flex items-center gap-4 pr-4"
-        style={{ borderRight: "1px solid rgba(255,255,255,0.06)", marginRight: 8, paddingRight: 12 }}>
-        <div className="flex items-center gap-1.5">
-          <span style={{ color: "#555", fontSize: 10 }}>Platziert</span>
-          <span style={{ color: "#c9a84c", fontFamily: "'Bebas Neue', cursive", fontSize: 16 }}>31</span>
+      {/* Stats strip – fixed left, never scrolls */}
+      <div
+        className="flex items-center gap-5 px-4 flex-shrink-0"
+        style={{ borderRight: "1px solid rgba(255,255,255,0.07)" }}
+      >
+        <div className="flex flex-col items-center leading-none">
+          <span style={{ color: "#c9a84c", fontFamily: "'Bebas Neue', cursive", fontSize: 17, lineHeight: 1 }}>31</span>
+          <span style={{ color: "#555", fontSize: 8, marginTop: 1, letterSpacing: "0.05em", textTransform: "uppercase" }}>Platziert</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span style={{ color: "#555", fontSize: 10 }}>Anwesend</span>
-          <span style={{ color: "#1db954", fontFamily: "'Bebas Neue', cursive", fontSize: 16 }}>8</span>
+        <div className="flex flex-col items-center leading-none">
+          <span style={{ color: "#1db954", fontFamily: "'Bebas Neue', cursive", fontSize: 17, lineHeight: 1 }}>8</span>
+          <span style={{ color: "#555", fontSize: 8, marginTop: 1, letterSpacing: "0.05em", textTransform: "uppercase" }}>Anwesend</span>
         </div>
-        <span style={{ color: "#444", fontSize: 10 }}>37 / 68 Plätze</span>
+        <span style={{ color: "#3a3a52", fontSize: 9, fontWeight: 600 }}>37/68</span>
       </div>
 
-      {/* Area tabs */}
-      {AREA_TABS.map((tab, i) => {
-        const isActive = activeArea === tab.id
-        return (
-          <button
-            key={tab.id}
-            onClick={() => {
-              onAreaChange(tab.id)
-              addToast("gold", `Bereich: ${tab.label}`, "Grundriss wird angezeigt")
-            }}
-            className="flex items-center gap-1.5 px-3 h-full transition-all"
-            style={{
-              background: isActive ? "rgba(201,168,76,0.1)" : "transparent",
-              borderBottom: isActive ? "2px solid #c9a84c" : "2px solid transparent",
-              color: isActive ? "#c9a84c" : "#666",
-              fontSize: 11,
-              fontWeight: 700,
-              whiteSpace: "nowrap",
-            }}
-          >
-            <span style={{ color: "#444", fontSize: 9 }}>{i + 1}.</span>
-            {tab.label}
-          </button>
-        )
-      })}
+      {/* Scrollable area tabs */}
+      <div
+        ref={scrollRef}
+        className="flex items-stretch flex-1 overflow-x-auto"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        <style>{`.area-tabs-scroll::-webkit-scrollbar { display: none }`}</style>
+        {AREA_TABS.map((tab, i) => {
+          const isActive = activeArea === tab.id
+          return (
+            <button
+              key={tab.id}
+              onClick={() => {
+                onAreaChange(tab.id)
+                addToast("gold", `Bereich: ${tab.label}`, "Grundriss wird angezeigt")
+              }}
+              style={{
+                minWidth: 148,
+                padding: "0 18px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 1,
+                background: isActive ? "rgba(201,168,76,0.1)" : "rgba(255,255,255,0.02)",
+                borderBottom: isActive ? "2.5px solid #c9a84c" : "2.5px solid transparent",
+                borderRight: "1px solid rgba(255,255,255,0.05)",
+                cursor: "pointer",
+                transition: "background 0.15s",
+                flexShrink: 0,
+              }}
+              onMouseEnter={e => {
+                if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)"
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = isActive ? "rgba(201,168,76,0.1)" : "rgba(255,255,255,0.02)"
+              }}
+            >
+              <span style={{ color: "#3a3a52", fontSize: 8, letterSpacing: "0.08em" }}>{i + 1}.</span>
+              <span
+                style={{
+                  color: isActive ? "#c9a84c" : "#9a9aaa",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.02em",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {tab.label}
+              </span>
+            </button>
+          )
+        })}
+      </div>
 
-      {/* View toggle */}
-      <div className="ml-auto">
-        <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors"
-          style={{ border: "1px solid rgba(255,255,255,0.07)", color: "#555" }}>
+      {/* View toggle – fixed right */}
+      <div className="flex items-center px-3 flex-shrink-0" style={{ borderLeft: "1px solid rgba(255,255,255,0.07)" }}>
+        <button
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+          style={{ border: "1px solid rgba(255,255,255,0.09)", color: "#666", background: "rgba(255,255,255,0.03)", whiteSpace: "nowrap" }}
+        >
           <Eye className="w-3 h-3" /> Ansicht
         </button>
       </div>
