@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useRef, useState } from "react"
 import { EmbeddedEditor } from "./editor/page"
+import { RoomGeometry, AREA_TABLE_DEFS, AREA_CANVAS } from "@/lib/floor-geometry"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -539,151 +540,85 @@ function BTable({
 }
 
 // ─── Floor Plan SVG ────────────────────────────────────────────────────────────
-// Coordinates taken verbatim from the YAML spec – DO NOT move any element.
+// Uses shared AREA_TABLE_DEFS + RoomGeometry so dashboard and editor always match.
 
-function FloorPlan({ selId, onTableClick }: { selId: string | null; onTableClick: (id: string) => void }) {
-  const STATUS_MAP: Record<string, TableStatus> = {
-    t10:"free",  t30:"free",  t50:"free",  t51:"free",  t52:"free",
-    t53:"free",  t54:"free",  t58:"free",  t59:"free",  t60:"free",
-    t61:"booked",t62:"booked",t63:"booked",
-    t64:"present",t65:"present",
-    t66:"free",  t67:"free",
-    b1:"free",   b2:"reserved", b3:"free",
+function FloorPlan({
+  selId, onTableClick, activeArea,
+}: {
+  selId: string | null
+  onTableClick: (id: string) => void
+  activeArea: string
+}) {
+  // Map raumplan area tab id → geometry area id
+  const AREA_MAP: Record<string, string> = {
+    billard: "billard",
+    salitos: "salitos",
+    rest140: "restaurant140",
+    rest75:  "restaurant75",
+    vip:     "vip",
   }
-  const s = (id: string) => STATUS_MAP[id] ?? "free"
-  const d = TABLE_DATA
+  const geoArea = AREA_MAP[activeArea] ?? "restaurant140"
+  const canvas  = AREA_CANVAS[geoArea] ?? { w: 860, h: 560 }
+  const defs    = AREA_TABLE_DEFS[geoArea] ?? []
 
-  // Shorthand: restaurant table at exact center coords from spec
-  // vw/vh = vertical bar dims, hw/hh = horizontal bar dims
-  const T = (id: string, cx: number, cy: number,
-    vw: number, vh: number, hw: number, hh: number,
-    cT = 2, cB = 2, cL = 1, cR = 1) => (
-    <TTable id={id} cx={cx} cy={cy} vw={vw} vh={vh} hw={hw} hh={hh}
-      status={s(id)}
-      label={d[id]?.title.replace("Tisch ", "") ?? id}
-      pax={d[id]?.pax ? parseInt(d[id].pax!) : undefined}
-      name={d[id]?.guest} time={d[id]?.startTime}
-      sel={selId} onClick={onTableClick}
-      cT={cT} cB={cB} cL={cL} cR={cR}
-    />
-  )
+  const STATUS_MAP: Record<string, TableStatus> = {
+    t10:"free", t30:"free", t50:"free", t51:"free", t52:"free",
+    t53:"free", t54:"free", t58:"free", t59:"free", t60:"free",
+    t61:"booked", t62:"booked", t63:"booked",
+    t64:"present", t65:"present",
+    t66:"free", t67:"free",
+    b1:"free", b2:"reserved", b3:"free",
+  }
+  const s = (id: string): TableStatus => STATUS_MAP[id] ?? "free"
+  const d = TABLE_DATA
 
   return (
     <svg
-      viewBox="0 0 860 560"
+      viewBox={`0 0 ${canvas.w} ${canvas.h}`}
       preserveAspectRatio="xMidYMid meet"
       className="w-full h-full"
       style={{ display: "block" }}
     >
-      <defs>
-        <radialGradient id="fpGlow" cx="50%" cy="42%" r="40%">
-          <stop offset="0%" stopColor="rgba(255,140,30,0.07)" />
-          <stop offset="100%" stopColor="transparent" />
-        </radialGradient>
-      </defs>
+      {/* ── Fixed room geometry (walls, zones, decorations) ── */}
+      <RoomGeometry areaId={geoArea} />
 
-      {/* ── Background ── */}
-      <rect width={860} height={560} fill="#1a1a1a" />
-      <rect width={860} height={560} fill="url(#fpGlow)" />
-
-      {/* ══════════════════════════════════════════════
-          ROOM WALLS  (spec: line1 308,278→308,400  line2 308,400→20,540)
-      ══════════════════════════════════════════════ */}
-      <line x1={308} y1={278} x2={308} y2={400} stroke="#2a2a2a" strokeWidth={2} />
-      <line x1={308} y1={400} x2={20}  y2={540} stroke="#2a2a2a" strokeWidth={2} />
-
-      {/* ── BAR AREA (top-left dark box, spec: x8 y8 w300 h270) ── */}
-      <rect x={8} y={8} width={300} height={270}
-        fill="rgba(16,16,16,0.9)" stroke="#282828" strokeWidth={1.5} rx={3} />
-
-      {/* ── BOTTOM-RIGHT ENCLOSED ROOM (spec: x640 y310 w210 h242) ── */}
-      <rect x={640} y={310} width={210} height={242}
-        fill="rgba(14,14,18,0.85)" stroke="#2e2e2e" strokeWidth={1.5} rx={3} />
-
-      {/* ── RONDO LOGO BOX (spec: x20 y420 w250 h120) ── */}
-      <rect x={20} y={420} width={250} height={120}
-        fill="rgba(12,12,12,0.95)" stroke="#222" strokeWidth={1} rx={4} />
-      <text x={145} y={476} textAnchor="middle"
-        fill="#c8b830" fontSize={28} fontFamily="'Bebas Neue', cursive"
-        letterSpacing="3">RONDO</text>
-      <text x={145} y={492} textAnchor="middle"
-        fill="#5a5a3a" fontSize={10} letterSpacing="0.15em">GOOD TIMES</text>
-
-      {/* ── PLANTS (spec positions) ── */}
-      <text x={305} y={305} fontSize={20} opacity={0.5}>🌿</text>
-      <text x={820} y={320} fontSize={22} opacity={0.55}>🌿</text>
-
-      {/* ══════════════════════════════════════════════
-          BILLIARD TABLES
-          B1: x580 y12 w108 h170
-          B2: x706 y12 w108 h170
-          B3: x500 y330 w148 h94  rotate(-38, 580, 380) [spec: rotate -38 deg around 580,380]
-      ══════════════════════════════════════════════ */}
-      <BTable id="b1" x={580} y={12} w={108} h={170}
-        status={s("b1")} label="BILLARD 1"
-        sel={selId} onClick={onTableClick} />
-
-      <BTable id="b2" x={706} y={12} w={108} h={170}
-        status={s("b2")} label="BILLARD 2"
-        name={d.b2.guest} time={`${d.b2.startTime} – ${d.b2.endTime}`}
-        sel={selId} onClick={onTableClick} />
-
-      <BTable id="b3" x={500} y={330} w={148} h={94}
-        status={s("b3")} label="BILLARD 3"
-        sel={selId} onClick={onTableClick}
-        transform="rotate(-38, 580, 380)" />
-
-      {/* ══════════════════════════════════════════════
-          RESTAURANT TABLES – EXACT COORDS FROM SPEC
-      ══════════════════════════════════════════════ */}
-
-      {/* Left side – inside bar box */}
-      {/* T10  cx=59  cy=47   (spec) */}
-      {T("t10",  59,  47,  18, 48, 52, 20,  2, 2, 1, 1)}
-      {/* T30  cx=184 cy=47   (spec) */}
-      {T("t30", 184,  47,  18, 48, 52, 20,  2, 2, 1, 1)}
-
-      {/* Top row: 52  53  54 */}
-      {/* T52  cx=339 cy=157  (spec) */}
-      {T("t52", 339, 157,  18, 48, 52, 20,  2, 2, 1, 1)}
-      {/* T53  cx=429 cy=157  (spec) */}
-      {T("t53", 429, 157,  18, 48, 52, 20,  2, 2, 1, 1)}
-      {/* T54  cx=521 cy=157  large: vbar h=66, hbar w=68  (spec) */}
-      {T("t54", 521, 157,  18, 66, 68, 20,  3, 3, 2, 2)}
-
-      {/* Middle row: 51  50  58  59 */}
-      {/* T51  cx=339 cy=255  (spec) */}
-      {T("t51", 339, 255,  18, 48, 52, 20,  2, 2, 1, 1)}
-      {/* T50  cx=430 cy=258  (spec) */}
-      {T("t50", 430, 258,  18, 48, 52, 20,  2, 2, 1, 1)}
-      {/* T58  cx=589 cy=255  (spec) */}
-      {T("t58", 589, 255,  18, 48, 52, 20,  2, 2, 1, 1)}
-      {/* T59  cx=729 cy=255  (spec) */}
-      {T("t59", 729, 255,  18, 48, 52, 20,  2, 2, 1, 1)}
-
-      {/* Bottom-right enclosed room: row A */}
-      {/* T61  cx=652 cy=330  blue  (spec) */}
-      {T("t61", 652, 330,  18, 48, 52, 20,  2, 2, 1, 1)}
-      {/* T60  cx=742 cy=330  free  (spec) */}
-      {T("t60", 742, 330,  18, 48, 52, 20,  2, 2, 1, 1)}
-
-      {/* Bottom-right enclosed room: row B */}
-      {/* T67  cx=652 cy=418  free  (spec) */}
-      {T("t67", 652, 418,  18, 48, 52, 20,  2, 2, 1, 1)}
-      {/* T66  cx=742 cy=418  free  (spec) */}
-      {T("t66", 742, 418,  18, 48, 52, 20,  2, 2, 1, 1)}
-
-      {/* Bottom-right enclosed room: row C (blue) */}
-      {/* T62  cx=652 cy=480  blue  (spec) */}
-      {T("t62", 652, 480,  18, 48, 52, 20,  2, 2, 1, 1)}
-      {/* T63  cx=742 cy=480  blue  (spec) */}
-      {T("t63", 742, 480,  18, 48, 52, 20,  2, 2, 1, 1)}
-
-      {/* Active tables – green, outside enclosed room */}
-      {/* T64  cx=310 cy=470  green / Licata  (spec) */}
-      {T("t64", 310, 470,  18, 48, 52, 20,  2, 2, 1, 1)}
-      {/* T65  cx=400 cy=470  green / Gutsch  (spec) */}
-      {T("t65", 400, 470,  18, 48, 52, 20,  2, 2, 1, 1)}
+      {/* ── Tables for this area ── */}
+      {defs.map(def => {
+        if (def.type === "billiard") {
+          const bStatus = s(def.id) === "reserved" ? "reserved" : s(def.id) === "booked" ? "reserved" : s(def.id)
+          const bData   = d[def.id]
+          return (
+            <BTable
+              key={def.id}
+              id={def.id}
+              x={def.x} y={def.y} w={def.w} h={def.h}
+              status={bStatus as TableStatus}
+              label={def.label.toUpperCase()}
+              name={bData?.guest}
+              time={bData?.startTime && bData?.endTime ? `${bData.startTime} – ${bData.endTime}` : undefined}
+              sel={selId}
+              onClick={onTableClick}
+              transform={def.rotation ? `rotate(${def.rotation}, ${def.cx}, ${def.cy})` : undefined}
+            />
+          )
+        }
+        return (
+          <TTable
+            key={def.id}
+            id={def.id}
+            cx={def.cx} cy={def.cy}
+            vw={def.vw!} vh={def.vh!} hw={def.hw!} hh={def.hh!}
+            status={s(def.id)}
+            label={def.label}
+            pax={d[def.id]?.pax ? parseInt(d[def.id]!.pax!) : undefined}
+            name={d[def.id]?.guest}
+            time={d[def.id]?.startTime}
+            sel={selId}
+            onClick={onTableClick}
+            cT={def.cT} cB={def.cB} cL={def.cL} cR={def.cR}
+          />
+        )
+      })}
     </svg>
   )
 }
@@ -952,7 +887,7 @@ export default function RaumplanPage() {
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         <ReservationPanel selectedRow={selRowIdx} onRowClick={openRow} />
         <div style={{ flex: 1, background: "#1a1a1a", overflow: "hidden" }}>
-          <FloorPlan selId={selTableId} onTableClick={openTable} />
+          <FloorPlan selId={selTableId} onTableClick={openTable} activeArea={activeArea} />
         </div>
       </div>
 

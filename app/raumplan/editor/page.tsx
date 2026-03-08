@@ -7,6 +7,7 @@ import {
   ZoomIn, ZoomOut, Maximize2, Copy, Layers,
   AlignLeft, AlignCenter, Move, MousePointer, X,
 } from "lucide-react"
+import { RoomGeometry, AREA_TABLE_DEFS, AREA_CANVAS } from "@/lib/floor-geometry"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,113 +47,40 @@ const STATUS_COLORS: Record<StatusType, string> = {
   blocked:  "#cc2222",
 }
 
-const DEFAULT_W  = 60
-const DEFAULT_H  = 60
-const BILLIARD_W = 110
-const BILLIARD_H = 68
+const DEFAULT_W  = 58   // must match floor-geometry hw+6
+const DEFAULT_H  = 54   // must match floor-geometry vh+6
+const BILLIARD_W = 220  // must match floor-geometry billiard w
+const BILLIARD_H = 136  // must match floor-geometry billiard h
 const GRID_SZ    = 10
 
 // ─── Per-Area Default Layouts ─────────────────────────────────────────────────
-// Each area starts with its own set of objects when the DB has none.
+// Derived from the shared AREA_TABLE_DEFS so editor and dashboard always match.
 
-function makeTable(
-  id: string, label: string, x: number, y: number,
-  area: string, seats = 4, status: StatusType = "free",
-  w = DEFAULT_W, h = DEFAULT_H
-): FloorObject {
-  return { id, type: "table", x, y, rotation: 0, seats, status, label, area_id: area, data_json: {}, width: w, height: h, locked: false }
-}
-function makeBilliard(
-  id: string, label: string, x: number, y: number,
-  area: string, rotation = 0, status: StatusType = "free"
-): FloorObject {
-  return { id, type: "billiard", x, y, rotation, seats: 0, status, label, area_id: area, data_json: {}, width: BILLIARD_W, height: BILLIARD_H, locked: false }
+function defsToFloorObjects(areaId: string): FloorObject[] {
+  const defs = AREA_TABLE_DEFS[areaId] ?? []
+  return defs.map(d => ({
+    id:        d.id,
+    type:      d.type,
+    x:         d.x,
+    y:         d.y,
+    rotation:  d.rotation,
+    seats:     d.seats,
+    status:    "free" as StatusType,
+    label:     d.label,
+    area_id:   areaId,
+    data_json: {},
+    width:     d.w,
+    height:    d.h,
+    locked:    false,
+  }))
 }
 
 const DEFAULT_LAYOUTS: Record<string, FloorObject[]> = {
-  // ── 1. Billard Tisch ──────────────────────────────────────────────────────
-  billard: [
-    makeBilliard("b1", "Billard 1", 40,  20, "billard"),
-    makeBilliard("b2", "Billard 2", 180, 20, "billard", 0, "reserved"),
-    makeBilliard("b3", "Billard 3", 110, 160, "billard", -38),
-    makeTable("bt10", "10", 20, 170, "billard", 4),
-    makeTable("bt30", "30", 20, 280, "billard", 4),
-  ],
-
-  // ── 2. Salitos Lounge / Outdoor ────────────────────────────────────────────
-  salitos: [
-    makeTable("s1",  "S1",  40,  40, "salitos", 4),
-    makeTable("s2",  "S2",  140, 40, "salitos", 4),
-    makeTable("s3",  "S3",  240, 40, "salitos", 6, "free", 90, DEFAULT_H),
-    makeTable("s4",  "S4",  40,  160, "salitos", 4),
-    makeTable("s5",  "S5",  140, 160, "salitos", 4),
-    makeTable("s6",  "S6",  240, 160, "salitos", 4),
-    makeTable("s7",  "S7",  40,  280, "salitos", 2),
-    makeTable("s8",  "S8",  140, 280, "salitos", 2),
-    makeTable("s9",  "S9",  240, 280, "salitos", 4),
-    makeTable("s10", "S10", 360, 40,  "salitos", 4),
-    makeTable("s11", "S11", 360, 160, "salitos", 4),
-    makeTable("s12", "S12", 460, 40,  "salitos", 6, "free", 90, DEFAULT_H),
-    makeTable("s13", "S13", 460, 160, "salitos", 4),
-  ],
-
-  // ── 3. Restaurant 140 Zoll ────────────────────────────────────────────────
-  restaurant140: [
-    makeTable("t10", "10",  30,  30,  "restaurant140", 4),
-    makeTable("t30", "30",  30,  150, "restaurant140", 4),
-    makeTable("t52", "52",  190, 100, "restaurant140", 4),
-    makeTable("t53", "53",  290, 100, "restaurant140", 4),
-    makeTable("t54", "54",  400, 100, "restaurant140", 8, "free", 110, DEFAULT_H),
-    makeTable("t51", "51",  190, 210, "restaurant140", 4),
-    makeTable("t50", "50",  290, 210, "restaurant140", 4),
-    makeTable("t58", "58",  400, 210, "restaurant140", 4),
-    makeTable("t59", "59",  540, 210, "restaurant140", 2),
-    makeTable("t61", "61",  450, 30,  "restaurant140", 4, "occupied"),
-    makeTable("t60", "60",  550, 30,  "restaurant140", 4),
-    makeTable("t67", "67",  450, 110, "restaurant140", 4),
-    makeTable("t66", "66",  550, 110, "restaurant140", 4),
-    makeTable("t62", "62",  450, 300, "restaurant140", 4, "occupied"),
-    makeTable("t63", "63",  550, 300, "restaurant140", 4, "occupied"),
-    makeTable("t64", "64",  190, 330, "restaurant140", 4, "occupied"),
-    makeTable("t65", "65",  290, 330, "restaurant140", 4, "occupied"),
-    makeBilliard("b1", "Billard 1", 310, 20,  "restaurant140"),
-    makeBilliard("b2", "Billard 2", 450, 20,  "restaurant140", 0, "reserved"),
-    makeBilliard("b3", "Billard 3", 310, 150, "restaurant140", -38),
-  ],
-
-  // ── 4. Restaurant 75 Zoll / Sport ─────────────────────────────────────────
-  restaurant75: [
-    makeTable("r75_1",  "1",  40,  40,  "restaurant75", 4),
-    makeTable("r75_2",  "2",  140, 40,  "restaurant75", 4),
-    makeTable("r75_3",  "3",  240, 40,  "restaurant75", 4),
-    makeTable("r75_4",  "4",  340, 40,  "restaurant75", 4),
-    makeTable("r75_5",  "5",  40,  160, "restaurant75", 6, "free", 90, DEFAULT_H),
-    makeTable("r75_6",  "6",  160, 160, "restaurant75", 4),
-    makeTable("r75_7",  "7",  260, 160, "restaurant75", 4),
-    makeTable("r75_8",  "8",  360, 160, "restaurant75", 4),
-    makeTable("r75_9",  "9",  40,  280, "restaurant75", 4),
-    makeTable("r75_10", "10", 140, 280, "restaurant75", 4),
-    makeTable("r75_11", "11", 240, 280, "restaurant75", 4),
-    makeTable("r75_12", "12", 340, 280, "restaurant75", 2),
-    makeTable("r75_b1", "Bar 1", 480, 40,  "restaurant75", 2),
-    makeTable("r75_b2", "Bar 2", 480, 120, "restaurant75", 2),
-    makeTable("r75_b3", "Bar 3", 480, 200, "restaurant75", 2),
-  ],
-
-  // ── 5. VIP Raum / Sport ───────────────────────────────────────────────────
-  vip: [
-    makeTable("v1",  "VIP 1", 40,  40,  "vip", 6, "free", 90, DEFAULT_H),
-    makeTable("v2",  "VIP 2", 160, 40,  "vip", 6, "free", 90, DEFAULT_H),
-    makeTable("v3",  "VIP 3", 40,  170, "vip", 6, "free", 90, DEFAULT_H),
-    makeTable("v4",  "VIP 4", 160, 170, "vip", 6, "free", 90, DEFAULT_H),
-    makeTable("v5",  "VIP 5", 300, 40,  "vip", 8, "free", 130, DEFAULT_H),
-    makeTable("v6",  "VIP 6", 300, 170, "vip", 4),
-    makeTable("v7",  "VIP 7", 420, 40,  "vip", 4),
-    makeTable("v8",  "VIP 8", 420, 140, "vip", 4),
-    makeTable("v9",  "VIP 9", 420, 240, "vip", 4),
-    makeBilliard("vb1", "Sport B1", 540, 40,  "vip"),
-    makeBilliard("vb2", "Sport B2", 540, 150, "vip"),
-  ],
+  billard:       defsToFloorObjects("billard"),
+  salitos:       defsToFloorObjects("salitos"),
+  restaurant140: defsToFloorObjects("restaurant140"),
+  restaurant75:  defsToFloorObjects("restaurant75"),
+  vip:           defsToFloorObjects("vip"),
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -684,7 +612,7 @@ function AreaSelector({ active, onChange }: { active: string; onChange: (id: str
   )
 }
 
-// ─── Toast ─────────────────────────────��──────────────────────────────────────
+// ─── Toast ─────────────────────────────���──────────────────────────────────────
 
 interface Toast { id: string; type: "success" | "error" | "info"; text: string }
 
@@ -1022,6 +950,15 @@ export function EmbeddedEditor({ initialArea = "restaurant140" }: { initialArea?
     </defs>
   ) : null
 
+  const AREA_BG: Record<string, string> = {
+    billard:       "#181818",
+    salitos:       "#161c16",
+    restaurant140: "#1a1a1a",
+    restaurant75:  "#161820",
+    vip:           "#14100c",
+  }
+  const canvasBg = AREA_BG[activeArea] ?? "#141420"
+
   const selectedObj = selectedIds.size === 1 ? objects.find(o => o.id === [...selectedIds][0]) : undefined
 
   return (
@@ -1071,7 +1008,7 @@ export function EmbeddedEditor({ initialArea = "restaurant140" }: { initialArea?
               ref={canvasRef}
               style={{
                 width: "100%", height: "100%",
-                background: "#141420",
+                background: canvasBg,
                 cursor: tool === "move" ? "grab" : "default",
                 touchAction: "none",  // Critical for iPad pointer events
                 display: "block",
@@ -1090,6 +1027,9 @@ export function EmbeddedEditor({ initialArea = "restaurant140" }: { initialArea?
 
               {/* Transform group: pan + zoom */}
               <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
+                {/* ── Fixed room geometry (walls, zones) – always behind objects ── */}
+                <RoomGeometry areaId={activeArea} />
+
                 {visible.map(obj =>
                   obj.type === "billiard" ? (
                     <BilliardShape
