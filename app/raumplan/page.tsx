@@ -1,12 +1,12 @@
 "use client"
+import React from "react"
 import dynamic from "next/dynamic"
 import { useEffect, useRef, useState } from "react"
-import { RoomGeometry, AREA_TABLE_DEFS, AREA_CANVAS } from "@/lib/floor-geometry"
 import {
   CalendarDays, ChevronLeft, ChevronRight, Cloud, BarChart2,
-  Users, User, Timer, Clock, ClipboardList, Settings, HelpCircle,
-  Bell, Menu, PencilRuler, X, CheckCheck, Check, PauseCircle,
-  AlertCircle, MapPin, Pencil, Mail, Ban, LogIn, Lock,
+  Users, User, Timer, Clock, ClipboardList,
+  Bell, Menu, X, CheckCheck, Check, PauseCircle,
+  AlertCircle, Pencil, Mail, Ban, LogIn, Lock,
 } from "lucide-react"
 
 // Dynamic import prevents SSR crash – the editor uses browser-only APIs
@@ -745,8 +745,6 @@ function FloorPlan({
   const FREE_FILL = "#d4d4dc"; const FREE_STR = "#b0b0c0"; const FREE_NUM = "#1a1a1a"
   const RES_FILL  = "#3a7bd5"; const RES_STR  = "#2a62b8"; const RES_NUM  = "#fff"
   const PRES_FILL = "#1e8a38"; const PRES_STR = "#166a2a"; const PRES_NUM = "#fff"
-  // keep old vars for BilliardTable usage
-  const FREE_OP = 1; const RES_OP = 1; const PRES_OP = 1
 
   const B_BALLS_1 = [
     { cx: 350, cy: 75,  r: 7, fill: "#f0f0f0", op: 0.75 },
