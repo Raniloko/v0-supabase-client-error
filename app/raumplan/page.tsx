@@ -71,11 +71,11 @@ const AREA_TABS = [
 ]
 
 const STATUS_COLOR: Record<TableStatus, { fill: string; stroke: string; text: string }> = {
-  free:    { fill: "#d0d0d8", stroke: "#b0b0c0", text: "#333" },
+  free:    { fill: "#d8d8e0", stroke: "#b8b8cc", text: "#222" },
   reserved:{ fill: "#c9a84c", stroke: "#a8883a", text: "#111" },
-  present: { fill: "#2a8a2a", stroke: "#1e6e1e", text: "#fff" },
-  booked:  { fill: "#3a7bd5", stroke: "#2a62b8", text: "#fff" },
-  blocked: { fill: "#922",    stroke: "#611",    text: "#fff" },
+  present: { fill: "#2a9a3a", stroke: "#1e7a2e", text: "#fff" },
+  booked:  { fill: "#2a6ad8", stroke: "#1a52b8", text: "#fff" },
+  blocked: { fill: "#aa2222", stroke: "#881111", text: "#fff" },
 }
 
 // ─── Topbar ────────────────────────────────────────────────────────────────────
@@ -433,10 +433,10 @@ function TTable({
         strokeWidth={selected ? 2.5 : 1.5}
       />
 
-      {pax !== undefined && (
+      {pax !== undefined && pax > 0 && (
         <>
-          <rect x={cx - hw / 2 + 2} y={cy - vh / 2 + 2} width={16} height={11} rx={2.5} fill="rgba(0,0,0,0.55)" />
-          <text x={cx - hw / 2 + 10} y={cy - vh / 2 + 10} textAnchor="middle" fill="#fff" fontSize={7} fontWeight="bold">{pax}</text>
+          <rect x={cx - hw / 2 + 1} y={cy - vh / 2 + 1} width={17} height={12} rx={2.5} fill="rgba(0,0,0,0.62)" />
+          <text x={cx - hw / 2 + 9.5} y={cy - vh / 2 + 10} textAnchor="middle" fill="#e0e0e0" fontSize={7.5} fontWeight="bold">{pax}</text>
         </>
       )}
 
@@ -445,14 +445,14 @@ function TTable({
 
       {name && (
         <>
-          <rect x={tx} y={cy + vh / 2 + 5} width={tw} height={13} rx={2.5} fill={sc.stroke} opacity={0.92} />
-          <text x={cx} y={cy + vh / 2 + 15} textAnchor="middle" fill="#fff" fontSize={8} fontWeight="bold">{name}</text>
           {time && (
-            <>
-              <rect x={tx} y={cy + vh / 2 + 19} width={tw} height={11} rx={2.5} fill="rgba(0,0,0,0.35)" />
-              <text x={cx} y={cy + vh / 2 + 28} textAnchor="middle" fill={status === "free" ? "#aaa" : "#fff"} fontSize={7.5} opacity={0.9}>{time}</text>
-            </>
+            <text x={cx} y={cy + vh / 2 + 13} textAnchor="middle"
+              fill={sc.text === "#fff" ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.55)"}
+              fontSize={7} fontWeight="600">{time}</text>
           )}
+          <text x={cx} y={cy + vh / 2 + (time ? 22 : 13)} textAnchor="middle"
+            fill={sc.text === "#fff" ? "#fff" : "#111"}
+            fontSize={7.5} fontWeight="bold">{name}</text>
         </>
       )}
 
@@ -466,7 +466,7 @@ function TTable({
   )
 }
 
-// ─── Billiard Table ───────────────────────────────────────────────────────────
+// ─── Billiard Table ─────────���─────────────────────────────────────────────────
 
 function BTable({
   id, x, y, w, h, status, label, name, time, sel, onClick, transform,
@@ -500,7 +500,7 @@ function BTable({
         fill="none" stroke={railColor} strokeWidth={railWidth} />
 
       {/* Green felt surface */}
-      <rect x={x} y={y} width={w} height={h} rx={3} fill="#1a6b2a" />
+      <rect x={x} y={y} width={w} height={h} rx={3} fill="#1a7a2e" />
 
       {/* Gold tint overlay if reserved */}
       {status === "reserved" && (
@@ -572,22 +572,27 @@ function FloorPlan({
   const defs    = AREA_TABLE_DEFS[geoArea] ?? []
 
   const STATUS_MAP: Record<string, TableStatus> = {
-    t10:"free", t30:"free", t50:"free", t51:"free", t52:"free",
-    t53:"free", t54:"free", t58:"free", t59:"free", t60:"free",
-    t61:"booked", t62:"booked", t63:"booked",
+    // Upper zone – all free (white)
+    t10:"free", t30:"free",
+    t50:"free", t51:"free", t52:"free", t53:"free", t54:"free",
+    t58:"free", t59:"free",
+    // Lower zone top row
+    t60:"free", t61:"booked", t66:"free", t67:"free",
+    // Lower zone bottom row
+    t62:"booked", t63:"booked",
     t64:"present", t65:"present",
-    t66:"free", t67:"free",
+    // Billiards
     b1:"free", b2:"reserved", b3:"free",
   }
   const s = (id: string): TableStatus => STATUS_MAP[id] ?? "free"
   const d = TABLE_DATA
 
   return (
-    <svg
+      <svg
       viewBox={`0 0 ${canvas.w} ${canvas.h}`}
       preserveAspectRatio="xMidYMid meet"
       className="w-full h-full"
-      style={{ display: "block" }}
+      style={{ display: "block", background: "#111111" }}
     >
       {/* ── Fixed room geometry (walls, zones, decorations) ── */}
       <RoomGeometry areaId={geoArea} />
@@ -826,7 +831,7 @@ function EditorModal({ areaId, onClose }: { areaId: string; onClose: () => void 
   )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Main Page ───────���────────────────────────────────────────────────────────
 
 export default function RaumplanPage() {
   const [activeArea, setActiveArea] = useState("billard")
@@ -896,7 +901,7 @@ export default function RaumplanPage() {
       {/* Body */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         <ReservationPanel selectedRow={selRowIdx} onRowClick={openRow} />
-        <div style={{ flex: 1, background: "#1a1a1a", overflow: "hidden" }}>
+        <div style={{ flex: 1, background: "#111111", overflow: "hidden" }}>
           <FloorPlan selId={selTableId} onTableClick={openTable} activeArea={activeArea} />
         </div>
       </div>
