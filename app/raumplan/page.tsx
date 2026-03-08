@@ -165,13 +165,35 @@ function AreaTabsBar({ activeArea, setActiveArea, onEditClick }: {
   onEditClick: () => void
 }) {
   const SEP = "1px solid #2a2a2a"
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  const scroll = (dir: "left" | "right") => {
+    if (!scrollRef.current) return
+    scrollRef.current.scrollBy({ left: dir === "left" ? -160 : 160, behavior: "smooth" })
+  }
+
   return (
     <div
       className="flex items-stretch flex-shrink-0"
       style={{ height: 44, background: "#1e1e1e", borderBottom: SEP, overflow: "hidden" }}
     >
+      {/* Left scroll arrow */}
+      <button
+        onClick={() => scroll("left")}
+        style={{
+          width: 32, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+          background: "transparent", border: "none", borderRight: SEP, cursor: "pointer", color: "#666",
+        }}
+      >
+        <ChevronLeft size={15} />
+      </button>
+
       {/* Scrollable tabs */}
-      <div className="flex items-stretch flex-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+      <div
+        ref={scrollRef}
+        className="flex items-stretch flex-1"
+        style={{ overflowX: "auto", scrollbarWidth: "none" }}
+      >
         <style>{`.area-scroll::-webkit-scrollbar{display:none}`}</style>
         {AREA_TABS.map(tab => {
           const active = activeArea === tab.id
@@ -185,12 +207,16 @@ function AreaTabsBar({ activeArea, setActiveArea, onEditClick }: {
                 fontWeight: 600,
                 color: active ? "#fff" : "#888",
                 background: active ? "rgba(255,255,255,0.08)" : "transparent",
-                borderBottom: active ? "2px solid #fff" : "2px solid transparent",
+                borderBottom: active ? "2px solid #c9a84c" : "2px solid transparent",
                 borderRight: SEP,
                 whiteSpace: "nowrap",
                 flexShrink: 0,
                 cursor: "pointer",
                 transition: "all 0.15s",
+                border: "none",
+                borderBottomWidth: 2,
+                borderBottomStyle: "solid",
+                borderBottomColor: active ? "#c9a84c" : "transparent",
               }}
               onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLButtonElement).style.color = "#ccc"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)" }}}
               onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLButtonElement).style.color = "#888"; (e.currentTarget as HTMLButtonElement).style.background = "transparent" }}}
@@ -200,18 +226,31 @@ function AreaTabsBar({ activeArea, setActiveArea, onEditClick }: {
           )
         })}
       </div>
-      {/* Ansicht toggle */}
+
+      {/* Right scroll arrow */}
+      <button
+        onClick={() => scroll("right")}
+        style={{
+          width: 32, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+          background: "transparent", border: "none", borderLeft: SEP, cursor: "pointer", color: "#666",
+        }}
+      >
+        <ChevronRight size={15} />
+      </button>
+
+      {/* Edit button */}
       <div className="flex items-center px-3" style={{ borderLeft: SEP, flexShrink: 0 }}>
         <button
           onClick={onEditClick}
           style={{
+            display: "flex", alignItems: "center", gap: 5,
             fontSize: 12, color: "#c9a84c", padding: "6px 10px",
             border: "1px solid rgba(201,168,76,0.35)", borderRadius: 5,
             background: "rgba(201,168,76,0.08)", cursor: "pointer",
             whiteSpace: "nowrap",
           }}
         >
-          Grundriss bearbeiten
+          <PencilRuler size={12} /> Grundriss bearbeiten
         </button>
       </div>
     </div>
@@ -902,69 +941,13 @@ export default function RaumplanPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden", fontFamily: "'DM Sans', sans-serif", background: "#111" }}>
       <Topbar currentTime={currentTime} />
+      <AreaTabsBar activeArea={activeArea} setActiveArea={setActiveArea} onEditClick={() => setEditorOpen(true)} />
 
-      {/* AreaTabsBar removed – areas are now in right sidebar */}
-      {/* Body – full height below topbar */}
+      {/* Body */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-
-        {/* Left – Reservation list (full height) */}
         <ReservationPanel selectedRow={selRowIdx} onRowClick={openRow} />
-
-        {/* Center – Floor plan */}
         <div style={{ flex: 1, background: "#111111", overflow: "hidden" }}>
           <FloorPlan selId={selTableId} onTableClick={openTable} activeArea={activeArea} />
-        </div>
-
-        {/* Right – Area / Bereich sidebar */}
-        <div style={{
-          width: 220, flexShrink: 0, background: "#161616",
-          borderLeft: "1px solid #2a2a2a",
-          display: "flex", flexDirection: "column", overflow: "hidden",
-        }}>
-          {/* Header */}
-          <div style={{
-            height: 44, display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "0 14px", borderBottom: "1px solid #2a2a2a", flexShrink: 0,
-          }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#666", textTransform: "uppercase", letterSpacing: "0.07em" }}>Bereiche</span>
-            <button
-              onClick={() => setEditorOpen(true)}
-              style={{
-                display: "flex", alignItems: "center", gap: 5,
-                fontSize: 10, color: "#c9a84c", padding: "4px 8px",
-                border: "1px solid rgba(201,168,76,0.3)", borderRadius: 5,
-                background: "rgba(201,168,76,0.07)", cursor: "pointer", whiteSpace: "nowrap",
-              }}
-            >
-              <PencilRuler size={11} /> Bearbeiten
-            </button>
-          </div>
-
-          {/* Area list */}
-          <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
-            {AREA_TABS.map(tab => {
-              const active = activeArea === tab.id
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveArea(tab.id)}
-                  style={{
-                    width: "100%", textAlign: "left",
-                    padding: "10px 14px",
-                    fontSize: 12, fontWeight: active ? 700 : 500,
-                    color: active ? "#fff" : "#777",
-                    background: active ? "rgba(255,255,255,0.07)" : "transparent",
-                    borderLeft: active ? "3px solid #c9a84c" : "3px solid transparent",
-                    border: "none", cursor: "pointer",
-                    transition: "all 0.12s",
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {tab.label}
-                </button>
-              )
-            })}
-          </div>
         </div>
       </div>
 
