@@ -530,28 +530,28 @@ function BTable({
 }
 
 // ─── Floor Plan SVG ────────────────────────────────────────────────────────────
+// Coordinates taken verbatim from the YAML spec – DO NOT move any element.
 
 function FloorPlan({ selId, onTableClick }: { selId: string | null; onTableClick: (id: string) => void }) {
-  const tStatus = (id: string): TableStatus => {
-    const map: Record<string, TableStatus> = {
-      t10:"free", t30:"free", t50:"free", t51:"free", t52:"free", t53:"free", t54:"free",
-      t58:"free", t59:"free", t60:"free",
-      t61:"booked", t62:"booked", t63:"booked",
-      t64:"present", t65:"present",
-      t66:"free", t67:"free",
-      b1:"free", b2:"reserved", b3:"free",
-    }
-    return map[id] ?? "free"
+  const STATUS_MAP: Record<string, TableStatus> = {
+    t10:"free",  t30:"free",  t50:"free",  t51:"free",  t52:"free",
+    t53:"free",  t54:"free",  t58:"free",  t59:"free",  t60:"free",
+    t61:"booked",t62:"booked",t63:"booked",
+    t64:"present",t65:"present",
+    t66:"free",  t67:"free",
+    b1:"free",   b2:"reserved", b3:"free",
   }
+  const s = (id: string) => STATUS_MAP[id] ?? "free"
   const d = TABLE_DATA
 
-  const tt = (
-    id: string, cx: number, cy: number,
+  // Shorthand: restaurant table at exact center coords from spec
+  // vw/vh = vertical bar dims, hw/hh = horizontal bar dims
+  const T = (id: string, cx: number, cy: number,
     vw: number, vh: number, hw: number, hh: number,
-    cT = 2, cB = 2, cL = 1, cR = 1,
-  ) => (
+    cT = 2, cB = 2, cL = 1, cR = 1) => (
     <TTable id={id} cx={cx} cy={cy} vw={vw} vh={vh} hw={hw} hh={hh}
-      status={tStatus(id)} label={d[id]?.title.replace("Tisch ", "") ?? id}
+      status={s(id)}
+      label={d[id]?.title.replace("Tisch ", "") ?? id}
       pax={d[id]?.pax ? parseInt(d[id].pax!) : undefined}
       name={d[id]?.guest} time={d[id]?.startTime}
       sel={selId} onClick={onTableClick}
@@ -559,128 +559,122 @@ function FloorPlan({ selId, onTableClick }: { selId: string | null; onTableClick
     />
   )
 
-  // viewBox: 860 × 560 (landscape)
-  // Screenshot analysis (landscape, mentally corrected):
-  //   Top-left area: enclosed grey box (bar/entrance) with T10 + T30 inside
-  //   Top-right: two billiard tables side-by-side (landscape/horizontal orientation)
-  //   Diagonal B3: to the right, below B1/B2, rotated ~-30deg
-  //   Center rows: 52 53 54 / 51 50 58 / (59 far right)
-  //   Bottom section: horizontal grey divider wall
-  //     Row A: 61(blue) 60 67 66
-  //     Row B (enclosed box): 62(blue) 63(blue) 64(green) 65(green)
-  //   Bottom-left: RONDO logo box
-
   return (
-    <svg viewBox="0 0 860 560" preserveAspectRatio="xMidYMid meet" className="w-full h-full" style={{ display: "block" }}>
+    <svg
+      viewBox="0 0 860 560"
+      preserveAspectRatio="xMidYMid meet"
+      className="w-full h-full"
+      style={{ display: "block" }}
+    >
       <defs>
-        <radialGradient id="ambientGlow" cx="55%" cy="45%" r="38%">
-          <stop offset="0%" stopColor="rgba(255,150,40,0.08)" />
+        <radialGradient id="fpGlow" cx="50%" cy="42%" r="40%">
+          <stop offset="0%" stopColor="rgba(255,140,30,0.07)" />
           <stop offset="100%" stopColor="transparent" />
         </radialGradient>
       </defs>
 
-      {/* ── Dark textured background ── */}
-      <rect width={860} height={560} fill="#161616" />
-      <rect width={860} height={560} fill="url(#ambientGlow)" />
+      {/* ── Background ── */}
+      <rect width={860} height={560} fill="#1a1a1a" />
+      <rect width={860} height={560} fill="url(#fpGlow)" />
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          ROOM STRUCTURE – grey outlines exactly as in screenshot
-      ═══════════════════════════════════════════════════════════════════ */}
+      {/* ══════════════════════════════════════════════
+          ROOM WALLS  (spec: line1 308,278→308,400  line2 308,400→20,540)
+      ══════════════════════════════════════════════ */}
+      <line x1={308} y1={278} x2={308} y2={400} stroke="#2a2a2a" strokeWidth={2} />
+      <line x1={308} y1={400} x2={20}  y2={540} stroke="#2a2a2a" strokeWidth={2} />
 
-      {/* Top-left enclosed zone (bar / entrance hall) – L-shaped
-          Screenshot: grey-bordered dark box, top-left corner
-          Contains T10 (top-left) and T30 (bottom of box) */}
-      <rect x={8} y={8} width={290} height={295}
-        fill="rgba(10,10,10,0.85)" stroke="#3a3a3a" strokeWidth={2} rx={3} />
+      {/* ── BAR AREA (top-left dark box, spec: x8 y8 w300 h270) ── */}
+      <rect x={8} y={8} width={300} height={270}
+        fill="rgba(16,16,16,0.9)" stroke="#282828" strokeWidth={1.5} rx={3} />
 
-      {/* Inner diagonal step (the angled wall cutting bottom-right corner of the top-left box) */}
-      <line x1={170} y1={303} x2={298} y2={303} stroke="#3a3a3a" strokeWidth={2} />
-      <line x1={298} y1={8} x2={298} y2={303} stroke="#3a3a3a" strokeWidth={2} />
+      {/* ── BOTTOM-RIGHT ENCLOSED ROOM (spec: x640 y310 w210 h242) ── */}
+      <rect x={640} y={310} width={210} height={242}
+        fill="rgba(14,14,18,0.85)" stroke="#2e2e2e" strokeWidth={1.5} rx={3} />
 
-      {/* ── Bottom section horizontal grey divider ──
-          Screenshot: clear horizontal wall/line separating the 61/60/67/66 row
-          from the 62/63/64/65 row */}
-      <rect x={306} y={370} width={548} height={8}
-        fill="#2e2e2e" stroke="#3a3a3a" strokeWidth={1} rx={1} />
+      {/* ── RONDO LOGO BOX (spec: x20 y420 w250 h120) ── */}
+      <rect x={20} y={420} width={250} height={120}
+        fill="rgba(12,12,12,0.95)" stroke="#222" strokeWidth={1} rx={4} />
+      <text x={145} y={476} textAnchor="middle"
+        fill="#c8b830" fontSize={28} fontFamily="'Bebas Neue', cursive"
+        letterSpacing="3">RONDO</text>
+      <text x={145} y={492} textAnchor="middle"
+        fill="#5a5a3a" fontSize={10} letterSpacing="0.15em">GOOD TIMES</text>
 
-      {/* ── Enclosed box for bottom rows (62/63/64/65) ──
-          Screenshot: dark bordered rectangle at very bottom */}
-      <rect x={306} y={378} width={548} height={174}
-        fill="rgba(10,10,10,0.75)" stroke="#3a3a3a" strokeWidth={2} rx={3} />
+      {/* ── PLANTS (spec positions) ── */}
+      <text x={305} y={305} fontSize={20} opacity={0.5}>🌿</text>
+      <text x={820} y={320} fontSize={22} opacity={0.55}>🌿</text>
 
-      {/* ── RONDO logo box – bottom-left ── */}
-      <rect x={8} y={378} width={290} height={174}
-        fill="rgba(8,8,8,0.96)" stroke="#2a2a2a" strokeWidth={1.5} rx={3} />
-      <text x={109} y={452} textAnchor="middle" fill="#c9a84c" fontSize={30}
-        fontFamily="'Bebas Neue', cursive" letterSpacing="0.14em" opacity={0.95}>RONDO</text>
-      <text x={109} y={469} textAnchor="middle" fill="#4a4a28" fontSize={9} letterSpacing="0.22em">GOOD TIMES</text>
-      {/* Plant decorations */}
-      <text x={20} y={538} fontSize={26} opacity={0.6}>🌿</text>
-      <text x={230} y={544} fontSize={18} opacity={0.45}>🌿</text>
-
-      {/* ═══════════════════════════════════════════════════════════════════
+      {/* ══════════════════════════════════════════════
           BILLIARD TABLES
-          Screenshot: two LANDSCAPE billiard tables (wider than tall)
-          side-by-side in the top-right area. B3 diagonal below-right.
-          Grey metal rail borders. Green felt. 6 pockets + balls + center line.
-      ═══════════════════════════════════════════════════════════════════ */}
-
-      {/* Billiard 1 – landscape, free, top-right */}
-      <BTable id="b1" x={446} y={16} w={170} h={106}
-        status={tStatus("b1")} label="BILLARD 1"
+          B1: x580 y12 w108 h170
+          B2: x706 y12 w108 h170
+          B3: x500 y330 w148 h94  rotate(-38, 580, 380) [spec: rotate -38 deg around 580,380]
+      ══════════════════════════════════════════════ */}
+      <BTable id="b1" x={580} y={12} w={108} h={170}
+        status={s("b1")} label="BILLARD 1"
         sel={selId} onClick={onTableClick} />
 
-      {/* Billiard 2 – landscape, reserved (Michelik), beside B1 */}
-      <BTable id="b2" x={634} y={16} w={170} h={106}
-        status={tStatus("b2")} label="BILLARD 2"
+      <BTable id="b2" x={706} y={12} w={108} h={170}
+        status={s("b2")} label="BILLARD 2"
         name={d.b2.guest} time={`${d.b2.startTime} – ${d.b2.endTime}`}
         sel={selId} onClick={onTableClick} />
 
-      {/* Billiard 3 – diagonal landscape, bottom-right of billiard area */}
-      <BTable id="b3" x={570} y={200} w={174} h={108}
-        status={tStatus("b3")} label="BILLARD 3"
+      <BTable id="b3" x={500} y={330} w={148} h={94}
+        status={s("b3")} label="BILLARD 3"
         sel={selId} onClick={onTableClick}
-        transform="rotate(-30, 657, 254)" />
+        transform="rotate(-38, 580, 380)" />
 
-      {/* Plant next to billiards */}
-      <text x={824} y={160} fontSize={22} opacity={0.55}>🌿</text>
+      {/* ══════════════════════════════════════════════
+          RESTAURANT TABLES – EXACT COORDS FROM SPEC
+      ══════════════════════════════════════════════ */}
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          RESTAURANT TABLES
-      ═══════════════════════════════════════════════════════════════════ */}
+      {/* Left side – inside bar box */}
+      {/* T10  cx=59  cy=47   (spec) */}
+      {T("t10",  59,  47,  18, 48, 52, 20,  2, 2, 1, 1)}
+      {/* T30  cx=184 cy=47   (spec) */}
+      {T("t30", 184,  47,  18, 48, 52, 20,  2, 2, 1, 1)}
 
-      {/* T10 – free, top of enclosed top-left box */}
-      {tt("t10", 76, 68,  18, 46, 52, 18,  2, 2, 1, 1)}
+      {/* Top row: 52  53  54 */}
+      {/* T52  cx=339 cy=157  (spec) */}
+      {T("t52", 339, 157,  18, 48, 52, 20,  2, 2, 1, 1)}
+      {/* T53  cx=429 cy=157  (spec) */}
+      {T("t53", 429, 157,  18, 48, 52, 20,  2, 2, 1, 1)}
+      {/* T54  cx=521 cy=157  large: vbar h=66, hbar w=68  (spec) */}
+      {T("t54", 521, 157,  18, 66, 68, 20,  3, 3, 2, 2)}
 
-      {/* T30 – free, bottom of enclosed top-left box */}
-      {tt("t30", 76, 218, 18, 46, 52, 18,  2, 2, 1, 1)}
+      {/* Middle row: 51  50  58  59 */}
+      {/* T51  cx=339 cy=255  (spec) */}
+      {T("t51", 339, 255,  18, 48, 52, 20,  2, 2, 1, 1)}
+      {/* T50  cx=430 cy=258  (spec) */}
+      {T("t50", 430, 258,  18, 48, 52, 20,  2, 2, 1, 1)}
+      {/* T58  cx=589 cy=255  (spec) */}
+      {T("t58", 589, 255,  18, 48, 52, 20,  2, 2, 1, 1)}
+      {/* T59  cx=729 cy=255  (spec) */}
+      {T("t59", 729, 255,  18, 48, 52, 20,  2, 2, 1, 1)}
 
-      {/* ── Centre area Row 1: 52  53  54 ──
-          Screenshot: T52 + T53 are medium cross shapes, T54 is a LARGE oval/rect
-          (significantly wider, with more chairs on long sides) */}
-      {tt("t52", 348, 148,  18, 46, 52, 18,  2, 2, 1, 1)}
-      {tt("t53", 430, 148,  18, 46, 52, 18,  2, 2, 1, 1)}
-      {/* T54 – large elongated table */}
-      {tt("t54", 540, 148,  24, 54, 110, 26,  3, 3, 2, 2)}
+      {/* Bottom-right enclosed room: row A */}
+      {/* T61  cx=652 cy=330  blue  (spec) */}
+      {T("t61", 652, 330,  18, 48, 52, 20,  2, 2, 1, 1)}
+      {/* T60  cx=742 cy=330  free  (spec) */}
+      {T("t60", 742, 330,  18, 48, 52, 20,  2, 2, 1, 1)}
 
-      {/* ── Centre area Row 2: 51  50  58  (59 far right) ──
-          Screenshot: medium crosses in a row, T50 slightly bigger */}
-      {tt("t51", 348, 264,  18, 46, 52, 18,  2, 2, 1, 1)}
-      {tt("t50", 430, 266,  20, 50, 58, 20,  2, 2, 1, 1)}
-      {tt("t58", 524, 264,  18, 46, 52, 18,  2, 2, 1, 1)}
-      {tt("t59", 814, 264,  18, 46, 52, 18,  2, 2, 1, 1)}
+      {/* Bottom-right enclosed room: row B */}
+      {/* T67  cx=652 cy=418  free  (spec) */}
+      {T("t67", 652, 418,  18, 48, 52, 20,  2, 2, 1, 1)}
+      {/* T66  cx=742 cy=418  free  (spec) */}
+      {T("t66", 742, 418,  18, 48, 52, 20,  2, 2, 1, 1)}
 
-      {/* ── Bottom section Row A (above divider): 61  60  67  66 ── */}
-      {tt("t61", 376, 336,  18, 46, 52, 18,  2, 2, 1, 1)}
-      {tt("t60", 460, 336,  18, 46, 52, 18,  2, 2, 1, 1)}
-      {tt("t67", 580, 336,  18, 46, 52, 18,  2, 2, 1, 1)}
-      {tt("t66", 672, 336,  18, 46, 52, 18,  2, 2, 1, 1)}
+      {/* Bottom-right enclosed room: row C (blue) */}
+      {/* T62  cx=652 cy=480  blue  (spec) */}
+      {T("t62", 652, 480,  18, 48, 52, 20,  2, 2, 1, 1)}
+      {/* T63  cx=742 cy=480  blue  (spec) */}
+      {T("t63", 742, 480,  18, 48, 52, 20,  2, 2, 1, 1)}
 
-      {/* ── Bottom section Row B (inside enclosed box): 62  63  64  65 ── */}
-      {tt("t62", 376, 464,  20, 50, 56, 20,  2, 2, 1, 1)}
-      {tt("t63", 468, 464,  20, 50, 56, 20,  2, 2, 1, 1)}
-      {tt("t64", 580, 464,  20, 50, 56, 20,  2, 2, 1, 1)}
-      {tt("t65", 672, 464,  20, 50, 56, 20,  2, 2, 1, 1)}
+      {/* Active tables – green, outside enclosed room */}
+      {/* T64  cx=310 cy=470  green / Licata  (spec) */}
+      {T("t64", 310, 470,  18, 48, 52, 20,  2, 2, 1, 1)}
+      {/* T65  cx=400 cy=470  green / Gutsch  (spec) */}
+      {T("t65", 400, 470,  18, 48, 52, 20,  2, 2, 1, 1)}
     </svg>
   )
 }
