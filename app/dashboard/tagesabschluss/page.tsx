@@ -55,13 +55,13 @@ export default function TagesabschlussPage() {
   const occupied = reservations.filter(r => r.status === "occupied").length
   const cancelled = reservations.filter(r => r.status === "cancelled").length
   const completed = reservations.filter(r => r.status === "completed").length
-  const totalGuests = reservations.filter(r => !["cancelled","waitlist"].includes(r.status)).reduce((s, r) => s + r.persons, 0)
+  const totalGuests = reservations.filter(r => !["cancelled","waitlist"].includes(r.status)).reduce((s, r) => s + (r.party_size ?? 0), 0)
   const avgPersons = total > 0 ? (totalGuests / Math.max(1, total - cancelled)).toFixed(1) : "0"
 
   // By area breakdown
   const areaBreakdown = Object.entries(AREA_LABELS).map(([id, name]) => {
     const areaRes = reservations.filter(r => r.area_id === id && r.status !== "cancelled")
-    return { id, name, count: areaRes.length, guests: areaRes.reduce((s, r) => s + r.persons, 0) }
+    return { id, name, count: areaRes.length, guests: areaRes.reduce((s, r) => s + (r.party_size ?? 0), 0) }
   }).filter(a => a.count > 0)
 
   const dateObj = new Date(reportDate + "T12:00:00")
@@ -215,7 +215,7 @@ export default function TagesabschlussPage() {
                         <td className="px-5 py-3 font-medium" style={{ color: "#f5f0e8" }}>{r.guest_name}</td>
                         <td className="px-5 py-3 text-xs" style={{ color: "#9a9a9a" }}>{AREA_LABELS[r.area_id] || r.area_id}</td>
                         <td className="px-5 py-3 font-mono text-xs" style={{ color: "#c9a84c" }}>#{(r.table as any)?.number || r.table_id}</td>
-                        <td className="px-5 py-3 text-xs" style={{ color: "#9a9a9a" }}>{r.persons}</td>
+                        <td className="px-5 py-3 text-xs" style={{ color: "#9a9a9a" }}>{r.party_size}</td>
                         <td className="px-5 py-3">
                           <span
                             className="px-2 py-0.5 rounded-full text-xs font-medium"
@@ -228,7 +228,7 @@ export default function TagesabschlussPage() {
                           </span>
                         </td>
                         <td className="px-5 py-3 text-xs italic" style={{ color: "#c9a84c" }}>
-                          {r.staff_notes || "–"}
+                          {r.internal_note || "–"}
                         </td>
                       </tr>
                     ))}

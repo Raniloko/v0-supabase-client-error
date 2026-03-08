@@ -6,7 +6,6 @@ import { useToast } from "@/lib/toast-context"
 import { RefreshCw, Plus, Trash2, ToggleLeft, ToggleRight, ChevronDown, ChevronUp } from "lucide-react"
 
 const WEEKDAYS_DE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"]
-const FREQ_LABELS = { weekly: "Wöchentlich", biweekly: "Zweiwöchentlich" }
 
 export default function WiederkehrendPage() {
   const supabase = createClient()
@@ -27,7 +26,6 @@ export default function WiederkehrendPage() {
   const [startTime, setStartTime] = useState("18:00")
   const [endTime, setEndTime] = useState("20:00")
   const [persons, setPersons] = useState(2)
-  const [frequency, setFrequency] = useState<"weekly" | "biweekly">("weekly")
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0])
   const [saving, setSaving] = useState(false)
 
@@ -57,10 +55,9 @@ export default function WiederkehrendPage() {
       weekday,
       start_time: startTime,
       end_time: endTime,
-      persons,
-      frequency,
+      party_size: persons,
       start_date: startDate,
-      active: true,
+      is_active: true,
     })
     setSaving(false)
     if (!error) {
@@ -74,9 +71,9 @@ export default function WiederkehrendPage() {
     }
   }
 
-  const handleToggleActive = async (id: string, active: boolean, name: string) => {
-    await supabase.from("recurring_reservations").update({ active: !active }).eq("id", id)
-    addToast("info", !active ? "Aktiviert" : "Pausiert", `${name}`)
+  const handleToggleActive = async (id: string, is_active: boolean, name: string) => {
+    await supabase.from("recurring_reservations").update({ is_active: !is_active }).eq("id", id)
+    addToast("info", !is_active ? "Aktiviert" : "Pausiert", `${name}`)
     fetchAll()
   }
 
@@ -94,7 +91,7 @@ export default function WiederkehrendPage() {
         <div>
           <h2 className="text-2xl font-bold" style={{ color: "#f5f0e8" }}>Wiederkehrende Reservierungen</h2>
           <p className="text-sm mt-1" style={{ color: "#6b6b6b" }}>
-            {entries.filter(e => e.active).length} aktive Stammgäste
+            {entries.filter(e => e.is_active).length} aktive Stammgäste
           </p>
         </div>
         <button
@@ -186,26 +183,6 @@ export default function WiederkehrendPage() {
               </div>
             </div>
             <div>
-              <label className="text-xs font-medium mb-1.5 block" style={{ color: "#9a9a9a" }}>Häufigkeit</label>
-              <select
-                value={frequency}
-                onChange={e => setFrequency(e.target.value as "weekly" | "biweekly")}
-                className="w-full rounded-lg px-4 py-2.5 text-sm outline-none"
-                style={{ background: "#111111", border: "1px solid rgba(201,168,76,0.15)", color: "#f5f0e8" }}
-              >
-                <option value="weekly">Wöchentlich</option>
-                <option value="biweekly">Zweiwöchentlich</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium mb-1.5 block" style={{ color: "#9a9a9a" }}>Personen</label>
-              <div className="flex items-center gap-3">
-                <button onClick={() => setPersons(p => Math.max(1, p-1))} className="w-8 h-8 rounded-lg text-lg font-bold" style={{ background: "#1a1a1a", color: "#9a9a9a" }}>-</button>
-                <span className="w-8 text-center font-bold" style={{ color: "#f5f0e8" }}>{persons}</span>
-                <button onClick={() => setPersons(p => Math.min(20, p+1))} className="w-8 h-8 rounded-lg text-lg font-bold" style={{ background: "#1a1a1a", color: "#9a9a9a" }}>+</button>
-              </div>
-            </div>
-            <div>
               <label className="text-xs font-medium mb-1.5 block" style={{ color: "#9a9a9a" }}>Start-Datum</label>
               <input
                 type="date"
@@ -263,7 +240,7 @@ export default function WiederkehrendPage() {
                     key={e.id}
                     style={{
                       borderBottom: i < entries.length - 1 ? "1px solid rgba(201,168,76,0.04)" : "none",
-                      opacity: e.active ? 1 : 0.4,
+                      opacity: e.is_active ? 1 : 0.4,
                     }}
                   >
                     <td className="px-5 py-3.5">
@@ -276,35 +253,35 @@ export default function WiederkehrendPage() {
                     </td>
                     <td className="px-5 py-3.5 text-xs" style={{ color: "#9a9a9a" }}>{(e.area as any)?.name || e.area_id}</td>
                     <td className="px-5 py-3.5 font-mono text-xs" style={{ color: "#c9a84c" }}>#{(e.table as any)?.number || e.table_id}</td>
-                    <td className="px-5 py-3.5 text-xs" style={{ color: "#9a9a9a" }}>{e.persons}</td>
+                    <td className="px-5 py-3.5 text-xs" style={{ color: "#9a9a9a" }}>{e.party_size}</td>
                     <td className="px-5 py-3.5">
                       <span className="px-2 py-0.5 rounded-full text-xs" style={{ background: "rgba(201,168,76,0.1)", color: "#c9a84c" }}>
-                        {FREQ_LABELS[e.frequency]}
+                        Wöchentlich
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
                       <span
                         className="px-2 py-0.5 rounded-full text-xs"
                         style={{
-                          background: e.active ? "rgba(42,157,92,0.12)" : "rgba(107,107,107,0.12)",
-                          color: e.active ? "#2a9d5c" : "#6b6b6b",
+                          background: e.is_active ? "rgba(42,157,92,0.12)" : "rgba(107,107,107,0.12)",
+                          color: e.is_active ? "#2a9d5c" : "#6b6b6b",
                         }}
                       >
-                        {e.active ? "Aktiv" : "Pausiert"}
+                        {e.is_active ? "Aktiv" : "Pausiert"}
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => handleToggleActive(e.id, e.active, e.guest_name)}
-                          title={e.active ? "Pausieren" : "Aktivieren"}
+                          onClick={() => handleToggleActive(e.id, e.is_active, e.guest_name)}
+                          title={e.is_active ? "Pausieren" : "Aktivieren"}
                           className="p-1.5 rounded-lg transition-all"
                           style={{
-                            background: e.active ? "rgba(212,137,42,0.1)" : "rgba(42,157,92,0.12)",
-                            color: e.active ? "#d4892a" : "#2a9d5c",
+                            background: e.is_active ? "rgba(212,137,42,0.1)" : "rgba(42,157,92,0.12)",
+                            color: e.is_active ? "#d4892a" : "#2a9d5c",
                           }}
                         >
-                          {e.active ? <ToggleLeft className="w-3.5 h-3.5" /> : <ToggleRight className="w-3.5 h-3.5" />}
+                          {e.is_active ? <ToggleLeft className="w-3.5 h-3.5" /> : <ToggleRight className="w-3.5 h-3.5" />}
                         </button>
                         <button
                           onClick={() => handleDelete(e.id, e.guest_name)}

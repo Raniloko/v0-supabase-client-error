@@ -98,7 +98,7 @@ export default function ReservierungenPage() {
     return true
   })
 
-  const totalGuests = filtered.filter(r => r.status !== "cancelled").reduce((s, r) => s + r.persons, 0)
+  const totalGuests = filtered.filter(r => r.status !== "cancelled").reduce((s, r) => s + (r.party_size ?? 0), 0)
   const dateLabel = `${WEEKDAYS_DE[selectedDate.getDay()]} ${selectedDate.getDate()}. ${MONTHS_DE[selectedDate.getMonth()]}`
   const isToday = dateStr === formatDate(new Date())
 
@@ -218,7 +218,7 @@ export default function ReservierungenPage() {
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="font-medium" style={{ color: "#f5f0e8" }}>{r.guest_name}</div>
-                      {r.staff_notes && <div className="text-xs italic mt-0.5" style={{ color: "#c9a84c" }}>{r.staff_notes}</div>}
+                      {r.internal_note && <div className="text-xs italic mt-0.5" style={{ color: "#c9a84c" }}>{r.internal_note}</div>}
                     </td>
                     <td className="px-5 py-3.5 text-xs" style={{ color: "#9a9a9a" }}>
                       <div>{r.guest_email || "–"}</div>
@@ -226,7 +226,7 @@ export default function ReservierungenPage() {
                     </td>
                     <td className="px-5 py-3.5 text-xs" style={{ color: "#9a9a9a" }}>{(r.area as any)?.name || r.area_id}</td>
                     <td className="px-5 py-3.5 font-mono text-xs" style={{ color: "#c9a84c" }}>#{(r.table as any)?.number || r.table_id}</td>
-                    <td className="px-5 py-3.5 text-xs" style={{ color: "#9a9a9a" }}>{r.persons}</td>
+                    <td className="px-5 py-3.5 text-xs" style={{ color: "#9a9a9a" }}>{r.party_size}</td>
                     <td className="px-5 py-3.5">
                       <span
                         className="px-2 py-0.5 rounded-full text-xs font-medium"

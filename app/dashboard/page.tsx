@@ -70,7 +70,7 @@ export default function DashboardPage() {
   const occupied = reservations.filter(r => r.status === "occupied").length
   const pending = reservations.filter(r => r.status === "waitlist").length
   const cancelled = reservations.filter(r => r.status === "cancelled").length
-  const totalGuests = reservations.filter(r => r.status !== "cancelled").reduce((s, r) => s + r.persons, 0)
+  const totalGuests = reservations.filter(r => r.status !== "cancelled").reduce((s, r) => s + (r.party_size ?? r.persons ?? 0), 0)
 
   const cTotal = useCountUp(total)
   const cOccupied = useCountUp(occupied)
@@ -169,7 +169,7 @@ export default function DashboardPage() {
                     <td className="px-5 py-3 font-medium" style={{ color: "#f5f0e8" }}>{r.guest_name}</td>
                     <td className="px-5 py-3 text-xs" style={{ color: "#9a9a9a" }}>{r.area?.name || r.area_id}</td>
                     <td className="px-5 py-3 font-mono text-xs" style={{ color: "#c9a84c" }}>#{r.table?.number || r.table_id}</td>
-                    <td className="px-5 py-3 text-xs" style={{ color: "#9a9a9a" }}>{r.persons}</td>
+                    <td className="px-5 py-3 text-xs" style={{ color: "#9a9a9a" }}>{r.party_size ?? r.persons}</td>
                     <td className="px-5 py-3">
                       <span
                         className="px-2 py-0.5 rounded-full text-xs font-medium"

@@ -1,13 +1,12 @@
 "use client"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
   LayoutDashboard, Map, CalendarDays, BarChart2, Clock,
   List, RefreshCw, Mail, Activity, FileText, Settings,
-  Dices, Sofa, Tv2, Trophy, Crown, LogOut, ChevronRight,
+  Dices, Sofa, Tv2, Trophy, Crown, ChevronRight,
 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 
 const NAV = [
   {
@@ -45,19 +44,12 @@ const NAV = [
 
 export default function Sidebar() {
   const pathname = usePathname()
-  const router = useRouter()
-  const supabase = createClient()
 
   const isActive = (href: string) => {
     if (href.includes("?")) {
       return pathname + (typeof window !== "undefined" ? window.location.search : "") === href
     }
     return pathname === href
-  }
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push("/auth/login")
   }
 
   return (
@@ -132,7 +124,7 @@ export default function Sidebar() {
 
       {/* Admin footer */}
       <div className="px-3 py-4" style={{ borderTop: "1px solid rgba(201,168,76,0.08)" }}>
-        <div className="flex items-center gap-2.5 mb-3 px-2">
+        <div className="flex items-center gap-2.5 px-2">
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
             style={{ background: "rgba(201,168,76,0.15)", color: "#c9a84c", border: "1px solid rgba(201,168,76,0.2)" }}
@@ -144,14 +136,6 @@ export default function Sidebar() {
             <div className="text-xs truncate" style={{ color: "#6b6b6b" }}>Administrator</div>
           </div>
         </div>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 w-full px-2.5 py-2 rounded-lg text-sm transition-all duration-200 hover:text-[#f5f0e8]"
-          style={{ color: "#6b6b6b" }}
-        >
-          <LogOut className="w-4 h-4" />
-          <span>Abmelden</span>
-        </button>
       </div>
     </aside>
   )

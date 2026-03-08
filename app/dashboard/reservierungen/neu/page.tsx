@@ -100,9 +100,9 @@ export default function NeueReservierungPage() {
       reservation_date: date,
       start_time: startTime,
       end_time: endTime,
-      persons,
+      party_size: persons,
       status: "confirmed",
-      staff_notes: staffNote || null,
+      internal_note: staffNote || null,
     })
     if (!error) {
       await supabase.from("tables").update({ status: "reserved" }).eq("id", selectedTableId)

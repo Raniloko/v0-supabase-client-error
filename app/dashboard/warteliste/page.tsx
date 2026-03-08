@@ -73,7 +73,7 @@ export default function WartelistePage() {
                       {e.desired_date} {e.desired_time.slice(0,5)}
                     </td>
                     <td className="px-5 py-3.5 text-xs" style={{ color: "#9a9a9a" }}>{(e.area as any)?.name || e.area_id}</td>
-                    <td className="px-5 py-3.5 text-xs" style={{ color: "#9a9a9a" }}>{e.persons}</td>
+                    <td className="px-5 py-3.5 text-xs" style={{ color: "#9a9a9a" }}>{e.party_size}</td>
                     <td className="px-5 py-3.5">
                       <span
                         className="px-2 py-0.5 rounded-full text-xs"

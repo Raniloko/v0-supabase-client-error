@@ -80,7 +80,7 @@ export default function TableSidePanel({
 
   const handleSaveNote = async () => {
     setSaving(true)
-    await supabase.from("table_notes").upsert({ table_id: table.id, note, updated_at: new Date().toISOString() })
+    await supabase.from("table_notes").insert({ table_id: table.id, note, created_by: "Admin" })
     setSaving(false)
     addToast("success", "Notiz gespeichert", `Tisch ${table.number}`)
   }
@@ -171,10 +171,10 @@ export default function TableSidePanel({
                       <div>
                         <p className="font-medium text-sm" style={{ color: "#f5f0e8" }}>{r.guest_name}</p>
                         <p className="text-xs mt-0.5 font-mono" style={{ color: "#9a9a9a" }}>
-                          {r.start_time.slice(0,5)} – {r.end_time.slice(0,5)} · {r.persons} Pers.
+                          {r.start_time.slice(0,5)} – {r.end_time.slice(0,5)} · {r.party_size} Pers.
                         </p>
-                        {r.staff_notes && (
-                          <p className="text-xs mt-1 italic" style={{ color: "#c9a84c" }}>{r.staff_notes}</p>
+                        {r.internal_note && (
+                          <p className="text-xs mt-1 italic" style={{ color: "#c9a84c" }}>{r.internal_note}</p>
                         )}
                       </div>
                       <span

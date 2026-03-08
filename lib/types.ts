@@ -34,9 +34,13 @@ export interface Reservation {
   reservation_date: string
   start_time: string
   end_time: string
-  persons: number
+  party_size: number
+  /** @deprecated use party_size */
+  persons?: number
   status: ReservationStatus
-  staff_notes: string | null
+  internal_note: string | null
+  /** @deprecated use internal_note */
+  staff_notes?: string | null
   checked_in_at: string | null
   recurring_id: string | null
   created_at: string
@@ -54,9 +58,11 @@ export interface WaitlistEntry {
   area_id: string
   desired_date: string
   desired_time: string
-  persons: number
-  notes: string | null
+  party_size: number
+  /** @deprecated use party_size */
+  persons?: number
   notified: boolean
+  promoted: boolean
   created_at: string
   area?: Area
 }
@@ -71,12 +77,11 @@ export interface RecurringReservation {
   weekday: number
   start_time: string
   end_time: string
-  persons: number
-  frequency: "weekly" | "biweekly"
+  party_size: number
   start_date: string
   end_date: string | null
-  active: boolean
-  staff_notes: string | null
+  is_active: boolean
+  internal_note: string | null
   created_at: string
   table?: Table
   area?: Area

@@ -7,28 +7,44 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 const defaultSettings: Settings = {
   id: "main",
   opening_hours: {
-    monday:    { open: "17:00", close: "02:00", enabled: true },
-    tuesday:   { open: "17:00", close: "02:00", enabled: true },
-    wednesday: { open: "17:00", close: "02:00", enabled: true },
-    thursday:  { open: "17:00", close: "02:00", enabled: true },
-    friday:    { open: "15:00", close: "03:00", enabled: true },
-    saturday:  { open: "15:00", close: "03:00", enabled: true },
-    sunday:    { open: "15:00", close: "00:00", enabled: true },
+    monday:    { open: "14:00", close: "02:00", enabled: true },
+    tuesday:   { open: "14:00", close: "02:00", enabled: true },
+    wednesday: { open: "14:00", close: "02:00", enabled: true },
+    thursday:  { open: "14:00", close: "02:00", enabled: true },
+    friday:    { open: "14:00", close: "03:00", enabled: true },
+    saturday:  { open: "12:00", close: "03:00", enabled: true },
+    sunday:    { open: "12:00", close: "02:00", enabled: true },
   },
   booking_rules: {
-    min_lead_minutes: 60,
+    min_lead_minutes: 30,
     max_duration_minutes: 180,
     default_duration_minutes: 120,
   },
   notification_settings: {
     admin_email_alerts: true,
-    manager_email: "",
+    manager_email: "manager@rondo-sportsbar.de",
   },
   email_sender: {
     name: "Rondo Sportsbar",
     address: "onboarding@resend.dev",
   },
   updated_at: new Date().toISOString(),
+}
+
+// The DB stores settings as key/value rows. This assembles them into our Settings shape.
+function assembleSettings(rows: { key: string; value: unknown }[]): Settings {
+  const map: Record<string, unknown> = {}
+  for (const row of rows) {
+    map[row.key] = row.value
+  }
+  return {
+    id: "main",
+    opening_hours: (map["opening_hours"] as Settings["opening_hours"]) ?? defaultSettings.opening_hours,
+    booking_rules: (map["booking_rules"] as Settings["booking_rules"]) ?? defaultSettings.booking_rules,
+    notification_settings: (map["notifications"] as Settings["notification_settings"]) ?? defaultSettings.notification_settings,
+    email_sender: (map["email_sender"] as Settings["email_sender"]) ?? defaultSettings.email_sender,
+    updated_at: new Date().toISOString(),
+  }
 }
 
 interface SettingsContextType {
@@ -49,31 +65,42 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   const getSupabase = () => {
     if (!supabaseRef.current) {
-      try {
-        supabaseRef.current = createClient()
-      } catch (error) {
-        console.error("[v0] Failed to create Supabase client:", error)
-        throw error
-      }
+      supabaseRef.current = createClient()
     }
     return supabaseRef.current
   }
 
   const refreshSettings = async () => {
-    const supabase = getSupabase()
-    const { data } = await supabase.from("settings").select("*").eq("id", "main").single()
-    if (data) setSettings(data as Settings)
+    try {
+      const supabase = getSupabase()
+      const { data, error } = await supabase.from("settings").select("key, value")
+      if (error) throw error
+      if (data && data.length > 0) {
+        setSettings(assembleSettings(data))
+      }
+    } catch (err) {
+      console.error("[v0] Failed to load settings:", err)
+    }
   }
 
   const updateSettings = async (updates: Partial<Settings>) => {
-    const supabase = getSupabase()
-    const merged = { ...settings, ...updates, updated_at: new Date().toISOString() }
-    const { data } = await supabase
-      .from("settings")
-      .upsert({ id: "main", ...merged })
-      .select()
-      .single()
-    if (data) setSettings(data as Settings)
+    try {
+      const supabase = getSupabase()
+      const keyMap: Record<string, unknown> = {}
+      if (updates.opening_hours)      keyMap["opening_hours"] = updates.opening_hours
+      if (updates.booking_rules)      keyMap["booking_rules"] = updates.booking_rules
+      if (updates.notification_settings) keyMap["notifications"] = updates.notification_settings
+      if (updates.email_sender)       keyMap["email_sender"] = updates.email_sender
+
+      for (const [key, value] of Object.entries(keyMap)) {
+        await supabase
+          .from("settings")
+          .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" })
+      }
+      await refreshSettings()
+    } catch (err) {
+      console.error("[v0] Failed to update settings:", err)
+    }
   }
 
   useEffect(() => {
@@ -82,8 +109,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     const channel = supabase
       .channel("settings-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "settings" }, (payload) => {
-        if (payload.new) setSettings(payload.new as Settings)
+      .on("postgres_changes", { event: "*", schema: "public", table: "settings" }, () => {
+        refreshSettings()
       })
       .subscribe()
 

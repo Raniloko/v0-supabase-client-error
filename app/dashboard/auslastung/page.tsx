@@ -44,7 +44,7 @@ export default function AuslastungPage() {
 
   // Stats
   const totalReservations = reservations.length
-  const totalGuests = reservations.reduce((s, r) => s + r.persons, 0)
+  const totalGuests = reservations.reduce((s, r) => s + (r.party_size ?? 0), 0)
   const avgPersons = totalReservations > 0 ? (totalGuests / totalReservations).toFixed(1) : "0"
   const peakHour = (() => {
     const counts: Record<number, number> = {}
@@ -61,7 +61,7 @@ export default function AuslastungPage() {
     area: AREA_LABELS[areaId],
     areaId,
     count: reservations.filter(r => r.area_id === areaId).length,
-    guests: reservations.filter(r => r.area_id === areaId).reduce((s, r) => s + r.persons, 0),
+    guests: reservations.filter(r => r.area_id === areaId).reduce((s, r) => s + (r.party_size ?? 0), 0),
   })).filter(d => d.count > 0)
 
   // Daily chart (last 14 days)
