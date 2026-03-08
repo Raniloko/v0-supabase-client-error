@@ -103,11 +103,7 @@ function Topbar({ currentTime }: { currentTime: string }) {
       {/* A – Menu + Logo */}
       <div className="flex items-center gap-2 px-3" style={{ borderRight: SEP }}>
         <button style={iconBtn}><Menu size={18} /></button>
-        <div style={{
-          width: 32, height: 32, borderRadius: 6, background: "#f5a623",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontWeight: 900, color: "#fff", fontSize: 18,
-        }}>R</div>
+        <img src="/rondo-logo.png" alt="Rondo" style={{ height: 28, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", opacity: 0.85 }} />
       </div>
 
       {/* B – Jetzt */}
@@ -159,10 +155,9 @@ function Topbar({ currentTime }: { currentTime: string }) {
 
 // ─── Area Tabs Bar ─────────────────────────────────────────────────────────────
 
-function AreaTabsBar({ activeArea, setActiveArea, onEditClick }: {
+function AreaTabsBar({ activeArea, setActiveArea }: {
   activeArea: string
   setActiveArea: (id: string) => void
-  onEditClick: () => void
 }) {
   const SEP = "1px solid #2a2a2a"
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -238,57 +233,61 @@ function AreaTabsBar({ activeArea, setActiveArea, onEditClick }: {
         <ChevronRight size={15} />
       </button>
 
-      {/* Edit button */}
-      <div className="flex items-center px-3" style={{ borderLeft: SEP, flexShrink: 0 }}>
-        <button
-          onClick={onEditClick}
-          style={{
-            display: "flex", alignItems: "center", gap: 5,
-            fontSize: 12, color: "#c9a84c", padding: "6px 10px",
-            border: "1px solid rgba(201,168,76,0.35)", borderRadius: 5,
-            background: "rgba(201,168,76,0.08)", cursor: "pointer",
-            whiteSpace: "nowrap",
-          }}
-        >
-          <PencilRuler size={12} /> Grundriss bearbeiten
-        </button>
-      </div>
+
     </div>
   )
 }
+
+// Per-tab filtering helpers
+const PLATZIERT_ROWS   = RESERVATION_ROWS.filter(r => r.status === "double-check" || r.status === "check" || r.status === "check-pause")
+const BEVORSTEHEND_ROWS = RESERVATION_ROWS.filter(r => r.status === "none" || r.status === "ob")
+const ACHTUNG_ROWS     = RESERVATION_ROWS.filter(r => r.highlighted && r.status !== "double-check")
 
 // ─── Reservation List Panel ────────────────────────────────────────────────────
 
 function ReservationPanel({
   selectedRow,
   onRowClick,
+  onNewReservation,
 }: {
   selectedRow: number | null
   onRowClick: (idx: number, row: typeof RESERVATION_ROWS[0]) => void
+  onNewReservation: () => void
 }) {
   const [resTab, setResTab] = useState<"reservierungsliste" | "warteliste">("reservierungsliste")
-  const [subTab, setSubTab] = useState<"platziert" | "bevorstehend" | "achtung">("bevorstehend")
+  const [subTab, setSubTab] = useState<"platziert" | "bevorstehend" | "achtung">("platziert")
+
+  const visibleRows =
+    subTab === "platziert"    ? PLATZIERT_ROWS
+    : subTab === "bevorstehend" ? BEVORSTEHEND_ROWS
+    : ACHTUNG_ROWS
+
+  const SUBTABS = [
+    { key: "platziert" as const,    label: "Platziert",  count: PLATZIERT_ROWS.length,    badgeBg: "#2a7a2a", icon: <Users size={11} /> },
+    { key: "bevorstehend" as const, label: "Bevorsteh.", count: BEVORSTEHEND_ROWS.length,  badgeBg: "#555",    icon: <Users size={11} /> },
+    { key: "achtung" as const,      label: "Achtung",    count: ACHTUNG_ROWS.length,       badgeBg: "#cc5500", icon: <AlertCircle size={11} /> },
+  ]
 
   return (
     <div style={{ width: 390, minWidth: 390, background: "#f2f2f2", borderRight: "1px solid #ddd", display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
 
-      {/* Sub-header tabs: Reservierungsliste / Warteliste */}
-      <div style={{ height: 42, background: "#1e1e1e", borderBottom: "1px solid #2a2a2a", display: "flex", alignItems: "center", padding: "0 12px", gap: 4, flexShrink: 0 }}>
+      {/* Top dark bar: Reservierungsliste / Warteliste + New button */}
+      <div style={{ height: 44, background: "#1e1e1e", borderBottom: "1px solid #2a2a2a", display: "flex", alignItems: "center", padding: "0 10px", gap: 4, flexShrink: 0 }}>
         {[
-          { key: "reservierungsliste" as const, label: "Reservierungsliste", badge: "18", badgeBg: "#3a8c3a" },
-          { key: "warteliste" as const,         label: "Warteliste",         badge: null, badgeBg: "" },
+          { key: "reservierungsliste" as const, label: "Reservierungen", badge: String(RESERVATION_ROWS.length), badgeBg: "#2a7a2a" },
+          { key: "warteliste" as const,         label: "Warteliste",     badge: null, badgeBg: "" },
         ].map(t => {
           const active = resTab === t.key
           return (
             <button key={t.key} onClick={() => setResTab(t.key)}
               style={{
-                display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 6,
-                fontSize: 12, fontWeight: 600, cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 5,
+                fontSize: 11, fontWeight: 600, cursor: "pointer",
                 background: active ? "rgba(255,255,255,0.12)" : "transparent",
-                color: active ? "#fff" : "#888", border: "none",
+                color: active ? "#fff" : "#666", border: "none", whiteSpace: "nowrap",
               }}>
               {t.badge && (
-                <span style={{ background: t.badgeBg, color: "#fff", fontSize: 10, fontWeight: 800, padding: "1px 6px", borderRadius: 10 }}>
+                <span style={{ background: t.badgeBg, color: "#fff", fontSize: 9, fontWeight: 800, padding: "1px 5px", borderRadius: 8 }}>
                   {t.badge}
                 </span>
               )}
@@ -296,26 +295,33 @@ function ReservationPanel({
             </button>
           )
         })}
+        <div style={{ flex: 1 }} />
+        <button
+          onClick={onNewReservation}
+          style={{
+            display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 5,
+            fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+            background: "#c9a84c", color: "#111", border: "none",
+          }}
+        >
+          + Neu
+        </button>
       </div>
 
       {/* Sub-tabs: Platziert / Bevorsteh. / Achtung */}
-      <div style={{ display: "flex", borderBottom: "2px solid #ddd", padding: "0 12px", flexShrink: 0, background: "#f2f2f2" }}>
-        {[
-          { key: "platziert" as const,    label: "Platziert",  count: "29", badgeBg: "#2a7a2a", icon: <Users size={11} /> },
-          { key: "bevorstehend" as const, label: "Bevorsteh.", count: "31", badgeBg: "#333",    icon: <Users size={11} /> },
-          { key: "achtung" as const,      label: "Achtung",    count: "2",  badgeBg: "#cc5500", icon: <AlertCircle size={11} /> },
-        ].map(t => {
+      <div style={{ display: "flex", borderBottom: "2px solid #ddd", padding: "0 10px", flexShrink: 0, background: "#f2f2f2" }}>
+        {SUBTABS.map(t => {
           const active = subTab === t.key
           return (
             <button key={t.key} onClick={() => setSubTab(t.key)}
               style={{
                 display: "flex", alignItems: "center", gap: 5,
-                padding: "10px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                padding: "9px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer",
                 color: active ? "#111" : "#888", background: "transparent", border: "none",
                 borderBottom: active ? "2px solid #111" : "2px solid transparent",
-                marginBottom: -2,
+                marginBottom: -2, whiteSpace: "nowrap",
               }}>
-              <span style={{ background: t.badgeBg, color: "#fff", fontSize: 10, fontWeight: 800, padding: "1px 5px", borderRadius: 10, display: "flex", alignItems: "center", gap: 3 }}>
+              <span style={{ background: t.badgeBg, color: "#fff", fontSize: 9, fontWeight: 800, padding: "1px 5px", borderRadius: 8, display: "flex", alignItems: "center", gap: 2 }}>
                 {t.icon} {t.count}
               </span>
               {t.label}
@@ -326,89 +332,78 @@ function ReservationPanel({
 
       {/* Column headers */}
       <div style={{
-        display: "flex", alignItems: "center", padding: "8px 14px", gap: 8,
+        display: "grid", gridTemplateColumns: "70px 28px 1fr 36px",
+        alignItems: "center", padding: "6px 14px", gap: 8,
         background: "#f2f2f2", borderBottom: "1px solid #ddd", flexShrink: 0,
       }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "#333", textTransform: "uppercase", letterSpacing: "0.04em" }}>UHRZEIT</span>
-        <span style={{ fontSize: 11, color: "#888" }}>↓</span>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "#333", textTransform: "uppercase", letterSpacing: "0.04em" }}>GAST</span>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "#333", textTransform: "uppercase", letterSpacing: "0.04em", marginLeft: 8 }}>NAME</span>
-        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-          <Settings size={14} color="#666" style={{ cursor: "pointer" }} />
-          <HelpCircle size={14} color="#666" style={{ cursor: "pointer" }} />
-          <Bell size={14} color="#666" style={{ cursor: "pointer" }} />
+        <span style={{ fontSize: 10, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.04em" }}>UHRZEIT</span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: "#555", textTransform: "uppercase", textAlign: "center" }}>P</span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.04em" }}>NAME / TISCH</span>
+        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+          <Bell size={13} color="#888" style={{ cursor: "pointer" }} />
         </div>
       </div>
 
       {/* Group label */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 8,
-        padding: "8px 14px", borderBottom: "1px solid #e0e0e0",
-        background: "#f2f2f2", flexShrink: 0,
-      }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "#333", textTransform: "uppercase", letterSpacing: "0.04em" }}>ABENDESSEN</span>
-        <span style={{ fontSize: 11, color: "#666" }}>Gesamt 8</span>
-        <span style={{ fontSize: 11, color: "#666", display: "flex", alignItems: "center", gap: 3 }}><Users size={11} /> 31</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 14px", borderBottom: "1px solid #e0e0e0", background: "#f5f5f5", flexShrink: 0 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: "#444", textTransform: "uppercase", letterSpacing: "0.04em" }}>ABENDESSEN</span>
+        <span style={{ fontSize: 10, color: "#777", marginLeft: "auto", display: "flex", alignItems: "center", gap: 3 }}><Users size={10} /> {RESERVATION_ROWS.reduce((s, r) => s + r.guests, 0)}</span>
       </div>
 
       {/* Rows */}
       <div style={{ flex: 1, overflowY: "auto" }}>
-        {RESERVATION_ROWS.map((row, idx) => {
-          const isSelected = selectedRow === idx
+        {visibleRows.length === 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 8, color: "#bbb" }}>
+            <Users size={28} color="#ccc" />
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#aaa" }}>Keine Einträge</span>
+          </div>
+        ) : visibleRows.map((row, idx) => {
+          const globalIdx = RESERVATION_ROWS.indexOf(row)
+          const isSelected = selectedRow === globalIdx
           const isHighlighted = row.highlighted
           return (
             <div
               key={idx}
-              onClick={() => onRowClick(idx, row)}
+              onClick={() => onRowClick(globalIdx, row)}
               style={{
                 display: "grid",
-                gridTemplateColumns: "80px 32px 1fr auto",
+                gridTemplateColumns: "70px 28px 1fr 36px",
                 alignItems: "center",
                 gap: 8,
                 padding: "0 14px",
-                minHeight: 62,
-                borderBottom: "1px solid #e0e0e0",
-                borderLeft: isHighlighted ? "3px solid #2a7a2a" : isSelected ? "3px solid #999" : "3px solid transparent",
-                background: isSelected ? "#eaeaea" : isHighlighted ? "#e8f0e8" : "#fff",
+                minHeight: 58,
+                borderBottom: "1px solid #e8e8e8",
+                borderLeft: isHighlighted ? "3px solid #2a7a2a" : isSelected ? "3px solid #c9a84c" : "3px solid transparent",
+                background: isSelected ? "#eaeaea" : isHighlighted ? "#edf4ed" : "#fff",
                 cursor: "pointer",
                 transition: "background 0.12s",
               }}
-              onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "#eaeaea" }}
+              onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "#f0f0f0" }}
               onMouseLeave={e => {
-                (e.currentTarget as HTMLDivElement).style.background = isSelected ? "#eaeaea" : isHighlighted ? "#e8f0e8" : "#fff"
+                (e.currentTarget as HTMLDivElement).style.background = isSelected ? "#eaeaea" : isHighlighted ? "#edf4ed" : "#fff"
               }}
             >
-              {/* Col 1: Time */}
+              {/* Time */}
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>{row.time}</div>
-                <div style={{ fontSize: 11, color: "#888" }}>{row.offset}</div>
+                <div style={{ fontSize: 10, color: "#999" }}>{row.offset}</div>
               </div>
-
-              {/* Col 2: Guest count */}
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#111", textAlign: "center" }}>{row.guests}</div>
-
-              {/* Col 3: Name + table */}
+              {/* Pax */}
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#333", textAlign: "center" }}>{row.guests}</div>
+              {/* Name + table */}
               <div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: "#111" }}>{row.name}</div>
-                <div style={{ fontSize: 11, color: "#888" }}>{row.table}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#111" }}>{row.name}</div>
+                <div style={{ fontSize: 10, color: "#999" }}>{row.table}</div>
               </div>
-
-              {/* Col 4: Status */}
-              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              {/* Status icon */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}>
                 {row.status === "ob" && (
-                  <span style={{ background: "#e07820", color: "#fff", fontSize: 9, fontWeight: 800, padding: "2px 5px", borderRadius: 4 }}>OB</span>
+                  <span style={{ background: "#e07820", color: "#fff", fontSize: 8, fontWeight: 800, padding: "2px 4px", borderRadius: 3 }}>OB</span>
                 )}
-                {row.status === "double-check" && (
-                  <CheckCheck size={15} color="#2a7a2a" strokeWidth={2.5} />
-                )}
-                {row.status === "check" && (
-                  <Check size={15} color="#2a7a2a" strokeWidth={2.5} />
-                )}
-                {row.status === "check-pause" && (
-                  <>
-                    <Check size={14} color="#2a7a2a" strokeWidth={2.5} />
-                    <PauseCircle size={13} color="#888" strokeWidth={2} />
-                  </>
+                {row.status === "double-check" && <CheckCheck size={14} color="#2a7a2a" strokeWidth={2.5} />}
+                {row.status === "check"         && <Check size={14} color="#2a7a2a" strokeWidth={2.5} />}
+                {row.status === "check-pause"   && (
+                  <><Check size={13} color="#2a7a2a" strokeWidth={2.5} /><PauseCircle size={12} color="#aaa" strokeWidth={2} /></>
                 )}
               </div>
             </div>
@@ -612,60 +607,70 @@ const CANVAS_TABLE_DATA: Record<string, { title: string; status: string; guest?:
   b3:  { title: "Billard 3", status: "Frei" },
 }
 
-// Chair helper used by cross-tables
-function Chair({ x, y, w, h, fill, opacity }: { x: number; y: number; w: number; h: number; fill: string; opacity: number }) {
-  return <rect x={x} y={y} width={w} height={h} rx={3} fill={fill} opacity={opacity} />
-}
-
-// Cross-shaped restaurant table
-function CrossTable({
-  id, vx, vy, vw, vh, hx, hy, hw, hh,
-  fill, opacity, numColor, numLabel, numX, numY,
-  chairs, onTableClick, sel,
-  nameTag, timeBadge,
+// Modern restaurant table: clean rounded rectangle with evenly-spaced seat circles around it
+// cx,cy = center; tw,th = table width/height; seats = number per side (top, right, bottom, left)
+function ModernTable({
+  id, cx, cy, tw, th,
+  fill, stroke, textColor,
+  label, sublabel,
+  sel, onTableClick,
+  seatTop = 2, seatRight = 1, seatBottom = 2, seatLeft = 1,
 }: {
-  id: string
-  vx: number; vy: number; vw: number; vh: number
-  hx: number; hy: number; hw: number; hh: number
-  fill: string; opacity: number; numColor: string; numLabel: string
-  numX: number; numY: number
-  chairs: { x: number; y: number; w: number; h: number }[]
-  onTableClick: (id: string) => void
-  sel: string | null
-  nameTag?: { text: string; rx: number; ry: number; rw: number; rh: number; fill: string }
-  timeBadge?: { text: string; rx: number; ry: number; rw: number; rh: number; color: string }
+  id: string; cx: number; cy: number; tw: number; th: number
+  fill: string; stroke: string; textColor: string
+  label: string; sublabel?: string
+  sel: string | null; onTableClick: (id: string) => void
+  seatTop?: number; seatRight?: number; seatBottom?: number; seatLeft?: number
 }) {
   const selected = sel === id
+  const SR = 5.5   // seat circle radius
+  const GAP = 7    // gap between table edge and seat center
+  const SEAT_FILL = fill
+  const SEAT_STROKE = stroke
+  const SEAT_OP = 0.55
+
+  // Generate evenly distributed seat positions along each edge
+  const seatsAlong = (n: number, along: number, fixed: number, horiz: boolean): [number,number][] => {
+    if (n === 0) return []
+    const spacing = along / (n + 1)
+    return Array.from({ length: n }, (_, i) => {
+      const pos = -along / 2 + spacing * (i + 1)
+      return horiz ? [cx + pos, fixed] : [fixed, cy + pos]
+    }) as [number,number][]
+  }
+
+  const tSeats = seatsAlong(seatTop,    tw, cy - th / 2 - GAP, true)
+  const bSeats = seatsAlong(seatBottom, tw, cy + th / 2 + GAP, true)
+  const lSeats = seatsAlong(seatLeft,   th, cx - tw / 2 - GAP, false)
+  const rSeats = seatsAlong(seatRight,  th, cx + tw / 2 + GAP, false)
+  const allSeats = [...tSeats, ...bSeats, ...lSeats, ...rSeats]
+
   return (
-    <g
-      onClick={() => onTableClick(id)}
-      style={{ cursor: "pointer" }}
-      filter={selected ? "brightness(1.25)" : undefined}
-    >
-      {chairs.map((c, i) => (
-        <Chair key={i} x={c.x} y={c.y} w={c.w} h={c.h} fill={fill} opacity={opacity * 0.55} />
-      ))}
+    <g onClick={() => onTableClick(id)} style={{ cursor: "pointer" }}>
+      {/* Selection ring */}
       {selected && (
-        <rect x={hx - 8} y={vy - 8} width={hw + 16} height={vh + 16} rx={6}
-          fill="none" stroke="rgba(240,192,96,0.65)" strokeWidth={2} strokeDasharray="5 3" />
+        <rect
+          x={cx - tw / 2 - SR - GAP - 4} y={cy - th / 2 - SR - GAP - 4}
+          width={tw + (SR + GAP + 4) * 2} height={th + (SR + GAP + 4) * 2}
+          rx={10} fill="none" stroke="rgba(240,192,96,0.7)" strokeWidth={2} strokeDasharray="5 3"
+        />
       )}
-      <rect x={vx} y={vy} width={vw} height={vh} rx={5} fill={fill} opacity={opacity} />
-      <rect x={hx} y={hy} width={hw} height={hh} rx={5} fill={fill} opacity={opacity} />
-      {timeBadge && (
-        <>
-          <rect x={timeBadge.rx} y={timeBadge.ry} width={timeBadge.rw} height={timeBadge.rh} rx={3} fill="rgba(0,0,0,0.6)" />
-          <text x={timeBadge.rx + timeBadge.rw / 2} y={timeBadge.ry + 9} textAnchor="middle"
-            fill={timeBadge.color} fontSize={9} fontWeight="bold" fontFamily="'DM Sans',sans-serif">{timeBadge.text}</text>
-        </>
-      )}
-      <text x={numX} y={numY} textAnchor="middle" dominantBaseline="middle"
-        fill={numColor} fontSize={13} fontWeight="bold" fontFamily="'DM Sans',sans-serif">{numLabel}</text>
-      {nameTag && (
-        <>
-          <rect x={nameTag.rx} y={nameTag.ry} width={nameTag.rw} height={nameTag.rh} rx={3} fill={nameTag.fill} />
-          <text x={nameTag.rx + nameTag.rw / 2} y={nameTag.ry + 10} textAnchor="middle"
-            fill="#fff" fontSize={10} fontWeight="bold" fontFamily="'DM Sans',sans-serif">{nameTag.text}</text>
-        </>
+      {/* Seat circles */}
+      {allSeats.map(([sx, sy], i) => (
+        <circle key={i} cx={sx} cy={sy} r={SR} fill={SEAT_FILL} stroke={SEAT_STROKE} strokeWidth={1} opacity={SEAT_OP} />
+      ))}
+      {/* Table surface */}
+      <rect
+        x={cx - tw / 2} y={cy - th / 2} width={tw} height={th} rx={7}
+        fill={fill} stroke={selected ? "#f0c060" : stroke} strokeWidth={selected ? 2 : 1.5}
+      />
+      {/* Table number */}
+      <text x={cx} y={cy + (sublabel ? -5 : 4)} textAnchor="middle" dominantBaseline="middle"
+        fill={textColor} fontSize={12} fontWeight="700" fontFamily="'DM Sans',sans-serif">{label}</text>
+      {/* Sublabel (guest name) */}
+      {sublabel && (
+        <text x={cx} y={cy + 9} textAnchor="middle" dominantBaseline="middle"
+          fill={textColor} fontSize={8} fontFamily="'DM Sans',sans-serif" opacity={0.8}>{sublabel}</text>
       )}
     </g>
   )
@@ -737,9 +742,11 @@ function FloorPlan({
   onTableClick: (id: string) => void
   activeArea: string
 }) {
-  const FREE_FILL   = "#d4d4dc"; const FREE_OP   = 0.88; const FREE_NUM   = "#222"
-  const RES_FILL    = "#3a7bd5"; const RES_OP    = 0.92; const RES_NUM    = "#fff"
-  const PRES_FILL   = "#1e8a38"; const PRES_OP   = 0.95; const PRES_NUM   = "#fff"
+  const FREE_FILL = "#d4d4dc"; const FREE_STR = "#b0b0c0"; const FREE_NUM = "#1a1a1a"
+  const RES_FILL  = "#3a7bd5"; const RES_STR  = "#2a62b8"; const RES_NUM  = "#fff"
+  const PRES_FILL = "#1e8a38"; const PRES_STR = "#166a2a"; const PRES_NUM = "#fff"
+  // keep old vars for BilliardTable usage
+  const FREE_OP = 1; const RES_OP = 1; const PRES_OP = 1
 
   const B_BALLS_1 = [
     { cx: 350, cy: 75,  r: 7, fill: "#f0f0f0", op: 0.75 },
@@ -806,155 +813,88 @@ function FloorPlan({
           label="BILLARD 3" labelY={155}
           onTableClick={onTableClick} sel={selId} />
 
-        {/* ── TABLE 10 – free, top-left ── */}
-        <CrossTable id="t10"
-          vx={88} vy={28} vw={28} vh={76} hx={62} hy={50} hw={80} hh={32}
-          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="10" numX={102} numY={71}
-          chairs={[{x:60,y:55,w:10,h:14},{x:134,y:55,w:10,h:14},{x:94,y:20,w:16,h:8},{x:94,y:102,w:16,h:8}]}
-          onTableClick={onTableClick} sel={selId} />
+        {/* ── Scattered upper area tables ── */}
+        {/* TABLE 10 */}
+        <ModernTable id="t10" cx={102} cy={67} tw={72} th={38}
+          fill={FREE_FILL} stroke={FREE_STR} textColor={FREE_NUM} label="10"
+          seatTop={2} seatBottom={2} seatLeft={1} seatRight={1}
+          sel={selId} onTableClick={onTableClick} />
 
-        {/* ── TABLE 52 – free ── */}
-        <CrossTable id="t52"
-          vx={158} vy={278} vw={26} vh={60} hx={130} hy={296} hw={82} hh={24}
-          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="52" numX={171} numY={312}
-          chairs={[{x:128,y:300,w:10,h:12},{x:206,y:300,w:10,h:12},{x:165,y:270,w:14,h:8},{x:165,y:336,w:14,h:8}]}
-          onTableClick={onTableClick} sel={selId} />
+        {/* TABLE 52 */}
+        <ModernTable id="t52" cx={172} cy={308} tw={72} th={38}
+          fill={FREE_FILL} stroke={FREE_STR} textColor={FREE_NUM} label="52"
+          seatTop={2} seatBottom={2} seatLeft={1} seatRight={1}
+          sel={selId} onTableClick={onTableClick} />
 
-        {/* ── TABLE 53 – free (wider) ── */}
-        <CrossTable id="t53"
-          vx={330} vy={278} vw={28} vh={60} hx={296} hy={296} hw={96} hh={24}
-          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="53" numX={344} numY={312}
-          chairs={[
-            {x:293,y:299,w:10,h:12},{x:382,y:299,w:10,h:12},
-            {x:306,y:270,w:14,h:8},{x:334,y:270,w:14,h:8},{x:362,y:270,w:14,h:8},
-            {x:306,y:336,w:14,h:8},{x:334,y:336,w:14,h:8},{x:362,y:336,w:14,h:8},
-          ]}
-          onTableClick={onTableClick} sel={selId} />
+        {/* TABLE 53 */}
+        <ModernTable id="t53" cx={344} cy={308} tw={88} th={38}
+          fill={FREE_FILL} stroke={FREE_STR} textColor={FREE_NUM} label="53"
+          seatTop={3} seatBottom={3} seatLeft={1} seatRight={1}
+          sel={selId} onTableClick={onTableClick} />
 
-        {/* ── TABLE 54 – free (largest) ── */}
-        <CrossTable id="t54"
-          vx={522} vy={272} vw={34} vh={72} hx={480} hy={292} hw={118} hh={32}
-          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="54" numX={539} numY={312}
-          chairs={[
-            {x:476,y:296,w:10,h:12},{x:476,y:314,w:10,h:12},
-            {x:592,y:296,w:10,h:12},{x:592,y:314,w:10,h:12},
-            {x:492,y:264,w:14,h:8},{x:514,y:264,w:14,h:8},{x:536,y:264,w:14,h:8},{x:558,y:264,w:14,h:8},
-            {x:492,y:342,w:14,h:8},{x:514,y:342,w:14,h:8},{x:536,y:342,w:14,h:8},{x:558,y:342,w:14,h:8},
-          ]}
-          onTableClick={onTableClick} sel={selId} />
+        {/* TABLE 54 */}
+        <ModernTable id="t54" cx={540} cy={308} tw={108} th={44}
+          fill={FREE_FILL} stroke={FREE_STR} textColor={FREE_NUM} label="54"
+          seatTop={4} seatBottom={4} seatLeft={2} seatRight={2}
+          sel={selId} onTableClick={onTableClick} />
 
-        {/* ── TABLE 51 – free ── */}
-        <CrossTable id="t51"
-          vx={158} vy={388} vw={26} vh={60} hx={130} hy={406} hw={82} hh={24}
-          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="51" numX={171} numY={422}
-          chairs={[{x:128,y:410,w:10,h:12},{x:206,y:410,w:10,h:12},{x:165,y:380,w:14,h:8},{x:165,y:446,w:14,h:8}]}
-          onTableClick={onTableClick} sel={selId} />
+        {/* TABLE 50 */}
+        <ModernTable id="t50" cx={344} cy={418} tw={72} th={38}
+          fill={FREE_FILL} stroke={FREE_STR} textColor={FREE_NUM} label="50"
+          seatTop={2} seatBottom={2} seatLeft={1} seatRight={1}
+          sel={selId} onTableClick={onTableClick} />
 
-        {/* ── TABLE 50 – free ── */}
-        <CrossTable id="t50"
-          vx={330} vy={388} vw={26} vh={60} hx={302} hy={406} hw={82} hh={24}
-          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="50" numX={343} numY={422}
-          chairs={[{x:300,y:410,w:10,h:12},{x:378,y:410,w:10,h:12},{x:338,y:380,w:14,h:8},{x:338,y:446,w:14,h:8}]}
-          onTableClick={onTableClick} sel={selId} />
+        {/* TABLE 59 */}
+        <ModernTable id="t59" cx={726} cy={418} tw={60} th={32}
+          fill={FREE_FILL} stroke={FREE_STR} textColor={FREE_NUM} label="59"
+          seatTop={2} seatBottom={2} seatLeft={1} seatRight={1}
+          sel={selId} onTableClick={onTableClick} />
 
-        {/* ── TABLE 58 – free (wider) ── */}
-        <CrossTable id="t58"
-          vx={516} vy={388} vw={28} vh={60} hx={482} hy={406} hw={96} hh={24}
-          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="58" numX={530} numY={422}
-          chairs={[
-            {x:480,y:409,w:10,h:12},{x:572,y:409,w:10,h:12},
-            {x:492,y:380,w:14,h:8},{x:514,y:380,w:14,h:8},{x:536,y:380,w:14,h:8},
-            {x:492,y:446,w:14,h:8},{x:514,y:446,w:14,h:8},{x:536,y:446,w:14,h:8},
-          ]}
-          onTableClick={onTableClick} sel={selId} />
-
-        {/* ── TABLE 59 – free (far right) ── */}
-        <CrossTable id="t59"
-          vx={720} vy={400} vw={22} vh={48} hx={698} hy={416} hw={66} hh={20}
-          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="59" numX={731} numY={430}
-          chairs={[{x:696,y:419,w:9,h:10},{x:759,y:419,w:9,h:10},{x:726,y:393,w:12,h:7},{x:726,y:446,w:12,h:7}]}
-          onTableClick={onTableClick} sel={selId} />
-
-        {/* ── TABLE 30 – free, bottom-left, outside box ── */}
-        <CrossTable id="t30"
-          vx={72} vy={460} vw={26} vh={60} hx={46} hy={478} hw={78} hh={24}
-          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="30" numX={85} numY={494}
-          chairs={[{x:44,y:482,w:10,h:12},{x:118,y:482,w:10,h:12},{x:78,y:452,w:14,h:8},{x:78,y:518,w:14,h:8}]}
-          onTableClick={onTableClick} sel={selId} />
-
-        {/* ── Plant ── */}
-        <text x={272} y={540} fontSize={38} textAnchor="middle">🌿</text>
+        {/* TABLE 30 – standalone bottom-left */}
+        <ModernTable id="t30" cx={85} cy={490} tw={72} th={38}
+          fill={FREE_FILL} stroke={FREE_STR} textColor={FREE_NUM} label="30"
+          seatTop={2} seatBottom={2} seatLeft={1} seatRight={1}
+          sel={selId} onTableClick={onTableClick} />
 
         {/* ── Enclosed bottom box ── */}
-        <rect x={330} y={490} width={638} height={184} rx={5}
-          fill="rgba(14,14,16,0.88)" stroke="#2a2a2a" strokeWidth={2} />
+        <rect x={330} y={490} width={638} height={184} rx={8}
+          fill="rgba(18,18,22,0.92)" stroke="#2a2a2a" strokeWidth={1.5} />
 
-        {/* BOX ROW 1 – tables 61, 60, 67, 66 */}
+        {/* BOX ROW 1 – 61, 60, 67, 66 */}
+        <ModernTable id="t61" cx={378} cy={534} tw={68} th={36}
+          fill={RES_FILL} stroke={RES_STR} textColor={RES_NUM} label="61" sublabel="Guido"
+          seatTop={2} seatBottom={2} seatLeft={1} seatRight={1}
+          sel={selId} onTableClick={onTableClick} />
+        <ModernTable id="t60" cx={530} cy={534} tw={68} th={36}
+          fill={FREE_FILL} stroke={FREE_STR} textColor={FREE_NUM} label="60"
+          seatTop={2} seatBottom={2} seatLeft={1} seatRight={1}
+          sel={selId} onTableClick={onTableClick} />
+        <ModernTable id="t67" cx={681} cy={534} tw={68} th={36}
+          fill={FREE_FILL} stroke={FREE_STR} textColor={FREE_NUM} label="67"
+          seatTop={2} seatBottom={2} seatLeft={1} seatRight={1}
+          sel={selId} onTableClick={onTableClick} />
+        <ModernTable id="t66" cx={833} cy={534} tw={68} th={36}
+          fill={FREE_FILL} stroke={FREE_STR} textColor={FREE_NUM} label="66"
+          seatTop={2} seatBottom={2} seatLeft={1} seatRight={1}
+          sel={selId} onTableClick={onTableClick} />
 
-        {/* TABLE 61 – reserved (Guido) */}
-        <CrossTable id="t61"
-          vx={366} vy={506} vw={24} vh={58} hx={338} hy={524} hw={80} hh={22}
-          fill={RES_FILL} opacity={RES_OP} numColor={RES_NUM} numLabel="61" numX={378} numY={538}
-          chairs={[{x:336,y:528,w:10,h:10},{x:412,y:528,w:10,h:10},{x:371,y:498,w:14,h:8},{x:371,y:562,w:14,h:8}]}
-          nameTag={{ text: "2 | Guido", rx: 338, ry: 572, rw: 80, rh: 15, fill: RES_FILL }}
-          onTableClick={onTableClick} sel={selId} />
-
-        {/* TABLE 60 – free */}
-        <CrossTable id="t60"
-          vx={518} vy={506} vw={24} vh={58} hx={490} hy={524} hw={80} hh={22}
-          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="60" numX={530} numY={538}
-          chairs={[{x:488,y:528,w:10,h:10},{x:564,y:528,w:10,h:10},{x:524,y:498,w:14,h:8},{x:524,y:562,w:14,h:8}]}
-          onTableClick={onTableClick} sel={selId} />
-
-        {/* TABLE 67 – free */}
-        <CrossTable id="t67"
-          vx={668} vy={506} vw={24} vh={58} hx={640} hy={524} hw={80} hh={22}
-          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="67" numX={680} numY={538}
-          chairs={[{x:638,y:528,w:10,h:10},{x:714,y:528,w:10,h:10},{x:674,y:498,w:14,h:8},{x:674,y:562,w:14,h:8}]}
-          onTableClick={onTableClick} sel={selId} />
-
-        {/* TABLE 66 – free */}
-        <CrossTable id="t66"
-          vx={820} vy={506} vw={24} vh={58} hx={792} hy={524} hw={80} hh={22}
-          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="66" numX={832} numY={538}
-          chairs={[{x:790,y:528,w:10,h:10},{x:866,y:528,w:10,h:10},{x:826,y:498,w:14,h:8},{x:826,y:562,w:14,h:8}]}
-          onTableClick={onTableClick} sel={selId} />
-
-        {/* BOX ROW 2 – tables 62, 63, 64, 65 */}
-
-        {/* TABLE 62 – reserved (Lentino) */}
-        <CrossTable id="t62"
-          vx={366} vy={618} vw={24} vh={42} hx={338} hy={632} hw={80} hh={20}
-          fill={RES_FILL} opacity={RES_OP} numColor={RES_NUM} numLabel="62" numX={378} numY={645}
-          chairs={[{x:336,y:636,w:10,h:9},{x:412,y:636,w:10,h:9},{x:371,y:612,w:14,h:6},{x:371,y:658,w:14,h:6}]}
-          nameTag={{ text: "3 | Lentino", rx: 338, ry: 666, rw: 80, rh: 15, fill: RES_FILL }}
-          onTableClick={onTableClick} sel={selId} />
-
-        {/* TABLE 63 – reserved (Santos d.) */}
-        <CrossTable id="t63"
-          vx={518} vy={618} vw={24} vh={42} hx={490} hy={632} hw={80} hh={20}
-          fill={RES_FILL} opacity={RES_OP} numColor={RES_NUM} numLabel="63" numX={530} numY={645}
-          chairs={[{x:488,y:636,w:10,h:9},{x:564,y:636,w:10,h:9},{x:524,y:612,w:14,h:6},{x:524,y:658,w:14,h:6}]}
-          nameTag={{ text: "4 | Santos d.", rx: 490, ry: 666, rw: 80, rh: 15, fill: RES_FILL }}
-          onTableClick={onTableClick} sel={selId} />
-
-        {/* TABLE 64 – present (Licata, 19:30) */}
-        <CrossTable id="t64"
-          vx={668} vy={615} vw={24} vh={44} hx={640} hy={630} hw={80} hh={22}
-          fill={PRES_FILL} opacity={PRES_OP} numColor={PRES_NUM} numLabel="64" numX={680} numY={644}
-          chairs={[{x:638,y:634,w:10,h:10},{x:714,y:634,w:10,h:10},{x:674,y:608,w:14,h:7},{x:674,y:657,w:14,h:7}]}
-          timeBadge={{ text: "19:30", rx: 652, ry: 606, rw: 46, rh: 13, color: "#5de88a" }}
-          nameTag={{ text: "2 | Licata", rx: 640, ry: 665, rw: 80, rh: 15, fill: PRES_FILL }}
-          onTableClick={onTableClick} sel={selId} />
-
-        {/* TABLE 65 – present (Gutsch, 20:00) */}
-        <CrossTable id="t65"
-          vx={820} vy={615} vw={24} vh={44} hx={792} hy={630} hw={80} hh={22}
-          fill={PRES_FILL} opacity={PRES_OP} numColor={PRES_NUM} numLabel="65" numX={832} numY={644}
-          chairs={[{x:790,y:634,w:10,h:10},{x:866,y:634,w:10,h:10},{x:826,y:608,w:14,h:7},{x:826,y:657,w:14,h:7}]}
-          timeBadge={{ text: "20:00", rx: 806, ry: 606, rw: 46, rh: 13, color: "#5de88a" }}
-          nameTag={{ text: "4 | Gutsch", rx: 792, ry: 665, rw: 80, rh: 15, fill: PRES_FILL }}
-          onTableClick={onTableClick} sel={selId} />
+        {/* BOX ROW 2 – 62, 63, 64, 65 */}
+        <ModernTable id="t62" cx={378} cy={638} tw={68} th={36}
+          fill={RES_FILL} stroke={RES_STR} textColor={RES_NUM} label="62" sublabel="Lentino"
+          seatTop={2} seatBottom={2} seatLeft={1} seatRight={1}
+          sel={selId} onTableClick={onTableClick} />
+        <ModernTable id="t63" cx={530} cy={638} tw={68} th={36}
+          fill={RES_FILL} stroke={RES_STR} textColor={RES_NUM} label="63" sublabel="Santos"
+          seatTop={2} seatBottom={2} seatLeft={1} seatRight={1}
+          sel={selId} onTableClick={onTableClick} />
+        <ModernTable id="t64" cx={681} cy={638} tw={68} th={36}
+          fill={PRES_FILL} stroke={PRES_STR} textColor={PRES_NUM} label="64" sublabel="Licata"
+          seatTop={2} seatBottom={2} seatLeft={1} seatRight={1}
+          sel={selId} onTableClick={onTableClick} />
+        <ModernTable id="t65" cx={833} cy={638} tw={68} th={36}
+          fill={PRES_FILL} stroke={PRES_STR} textColor={PRES_NUM} label="65" sublabel="Gutsch"
+          seatTop={2} seatBottom={2} seatLeft={1} seatRight={1}
+          sel={selId} onTableClick={onTableClick} />
 
         {/* ── Rondo logo box ── */}
         <rect x={14} y={545} width={222} height={126} rx={6}
@@ -969,124 +909,263 @@ function FloorPlan({
   )
 }
 
+// ─── Booking Form ─────────────────────────────────────────────────────────────
+
+function BookingForm({ tableTitle, onClose, onSave }: {
+  tableTitle: string
+  onClose: () => void
+  onSave: (data: { guest: string; pax: string; date: string; startTime: string; endTime: string; note: string }) => void
+}) {
+  const [guest, setGuest]         = useState("")
+  const [pax, setPax]             = useState("2")
+  const [date, setDate]           = useState("2026-03-08")
+  const [startTime, setStartTime] = useState("19:00")
+  const [endTime, setEndTime]     = useState("21:00")
+  const [note, setNote]           = useState("")
+  const [saved, setSaved]         = useState(false)
+
+  const inp: React.CSSProperties = {
+    width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #ddd",
+    borderRadius: 6, outline: "none", background: "#fff", boxSizing: "border-box",
+    color: "#111",
+  }
+  const lbl: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 4, display: "block" }
+
+  if (saved) return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 12, padding: 24 }}>
+      <div style={{ width: 52, height: 52, borderRadius: 26, background: "#e8f5e8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <CheckCheck size={26} color="#2a7a2a" />
+      </div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>Reservierung gespeichert!</div>
+      <div style={{ fontSize: 12, color: "#888" }}>{tableTitle} · {guest || "Gast"} · {pax} Pers.</div>
+      <button onClick={onClose}
+        style={{ marginTop: 8, padding: "9px 24px", borderRadius: 7, background: "#111", color: "#fff", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>
+        Schliessen
+      </button>
+    </div>
+  )
+
+  return (
+    <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 14, flex: 1, overflowY: "auto" }}>
+      <div>
+        <label style={lbl}>Gastname *</label>
+        <input style={inp} placeholder="z.B. Müller, Hans" value={guest} onChange={e => setGuest(e.target.value)} />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div>
+          <label style={lbl}>Personen</label>
+          <select style={inp} value={pax} onChange={e => setPax(e.target.value)}>
+            {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={String(n)}>{n} Pers.</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={lbl}>Datum</label>
+          <input type="date" style={inp} value={date} onChange={e => setDate(e.target.value)} />
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div>
+          <label style={lbl}>Von</label>
+          <input type="time" style={inp} value={startTime} onChange={e => setStartTime(e.target.value)} />
+        </div>
+        <div>
+          <label style={lbl}>Bis</label>
+          <input type="time" style={inp} value={endTime} onChange={e => setEndTime(e.target.value)} />
+        </div>
+      </div>
+      <div>
+        <label style={lbl}>Interne Notiz</label>
+        <textarea style={{ ...inp, height: 64, resize: "none" }} placeholder="Nicht für Gäste sichtbar..." value={note} onChange={e => setNote(e.target.value)} />
+      </div>
+      <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+        <button onClick={onClose}
+          style={{ flex: 1, padding: "9px 0", borderRadius: 7, background: "#f5f5f5", color: "#555", fontSize: 13, fontWeight: 600, border: "1px solid #ddd", cursor: "pointer" }}>
+          Abbrechen
+        </button>
+        <button
+          onClick={() => { if (guest) { onSave({ guest, pax, date, startTime, endTime, note }); setSaved(true) } }}
+          style={{ flex: 2, padding: "9px 0", borderRadius: 7, background: guest ? "#1a1a1a" : "#ccc", color: "#fff", fontSize: 13, fontWeight: 700, border: "none", cursor: guest ? "pointer" : "default" }}>
+          Reservierung speichern
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Slide-in Panel ───────────────────────────────────────────────────────────
 
-function SlidePanel({ data, onClose }: { data: PanelData | null; onClose: () => void }) {
-  const open = data !== null
+function SlidePanel({
+  data, onClose, showBookingForm, onNewReservation,
+}: {
+  data: PanelData | null
+  onClose: () => void
+  showBookingForm: boolean
+  onNewReservation: () => void
+}) {
+  const [mode, setMode] = useState<"view" | "edit" | "book">("view")
+  const [note, setNote] = useState("")
+  const [checkedIn, setCheckedIn] = useState(false)
+  const open = data !== null || showBookingForm
+
+  // Reset mode when a new table is selected
+  useEffect(() => { setMode("view"); setCheckedIn(false) }, [data?.title])
 
   const statusPillStyle = (s: PanelData["status"]): React.CSSProperties => {
     if (s === "Frei")       return { background: "#e8f5e8", color: "#2a7a2a", border: "1px solid #b8d8b8" }
-    if (s === "Reserviert") return { background: "#fff3e0", color: "#e07820", border: "1px solid #f0c88a" }
-    if (s === "Anwesend")   return { background: "#e8f5e8", color: "#2a7a2a", border: "1px solid #b8d8b8" }
+    if (s === "Reserviert") return { background: "#fff3e0", color: "#c07010", border: "1px solid #f0c88a" }
+    if (s === "Anwesend")   return { background: "#d4f0d4", color: "#1a6a1a", border: "1px solid #a8d8a8" }
     return { background: "#eee", color: "#666", border: "1px solid #ddd" }
   }
 
   return (
     <>
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
+      <div onClick={onClose}
         style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)",
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)",
           zIndex: 199, opacity: open ? 1 : 0, pointerEvents: open ? "auto" : "none",
-          transition: "opacity 0.3s",
+          transition: "opacity 0.25s",
         }}
       />
-
-      {/* Panel */}
       <div
         style={{
           position: "fixed", top: 0, bottom: 0,
-          right: open ? 0 : -440,
-          width: 420,
+          right: open ? 0 : -460,
+          width: 430,
           background: "#fff",
-          borderLeft: "1px solid #ddd",
+          borderLeft: "1px solid #e0e0e0",
           zIndex: 200,
           transition: "right 0.3s cubic-bezier(0.25,0.46,0.45,0.94)",
           display: "flex", flexDirection: "column",
-          overflowY: "auto",
+          overflow: "hidden",
+          boxShadow: open ? "-4px 0 24px rgba(0,0,0,0.12)" : "none",
         }}
       >
-        {data && (
-          <>
-            {/* Header */}
-            <div style={{ background: "#f8f8f8", borderBottom: "1px solid #eee", padding: "16px 18px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexShrink: 0 }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#111" }}>{data.title}</div>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{data.area}</div>
+        {/* Header */}
+        {(data || showBookingForm) && (
+          <div style={{ background: "#f8f8f8", borderBottom: "1px solid #eee", padding: "14px 16px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexShrink: 0 }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>
+                {showBookingForm && !data ? "Neue Reservierung" : mode === "book" ? `${data?.title} – Reservierung` : data?.title}
               </div>
-              <button onClick={onClose}
-                style={{ width: 28, height: 28, borderRadius: 6, background: "#eee", border: "1px solid #ddd", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: "#666" }}>
-                ✕
-              </button>
+              <div style={{ fontSize: 11, color: "#999", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                <CalendarDays size={11} /> Samstag, 8. März 2026
+                {data && (
+                  <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 12, ...statusPillStyle(data.status) }}>
+                    {checkedIn ? "Anwesend" : data.status}
+                  </span>
+                )}
+              </div>
             </div>
+            <button onClick={onClose}
+              style={{ width: 28, height: 28, borderRadius: 6, background: "#eee", border: "1px solid #ddd", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#666", flexShrink: 0 }}>
+              <X size={13} />
+            </button>
+          </div>
+        )}
 
-            {/* Date row */}
-            <div style={{ padding: "10px 18px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#333", display: "flex", alignItems: "center", gap: 5 }}><CalendarDays size={13} /> Samstag, 8. März 2026</span>
-              <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 20, ...statusPillStyle(data.status) }}>
-                {data.status}
-              </span>
-            </div>
-
-            {/* Body */}
-            <div style={{ padding: "14px 18px", flex: 1 }}>
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+          {(mode === "book" || showBookingForm) ? (
+            <BookingForm
+              tableTitle={data?.title ?? "Tisch"}
+              onClose={onClose}
+              onSave={() => {}}
+            />
+          ) : data && (
+            <>
               {!data.guest ? (
-                <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: "40px 20px", textAlign: "center" }}>
                   <CalendarDays size={36} color="#ccc" />
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#666" }}>Keine Reservierungen heute</div>
-                  <div style={{ fontSize: 12, color: "#aaa" }}>Dieser Tisch ist frei verfügbar</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#666" }}>Dieser Tisch ist frei</div>
+                  <div style={{ fontSize: 12, color: "#bbb" }}>Keine Reservierungen für heute</div>
+                  <button onClick={() => setMode("book")}
+                    style={{ marginTop: 8, padding: "9px 22px", borderRadius: 7, background: "#1a1a1a", color: "#fff", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>
+                    + Reservierung anlegen
+                  </button>
                 </div>
               ) : (
-                <div style={{ background: "#f8f8f8", border: "1px solid #e8e8e8", borderRadius: 8, padding: "12px 14px" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                    <span style={{ fontSize: 16, fontWeight: 700, color: "#111" }}>{data.startTime} – {data.endTime}</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 12, ...statusPillStyle(data.status) }}>{data.status}</span>
+                <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+                  {/* Reservation card */}
+                  <div style={{ background: "#f8f8f8", border: "1px solid #e8e8e8", borderRadius: 8, padding: "12px 14px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>{data.startTime} – {data.endTime}</span>
                       <span style={{ fontSize: 11, color: "#888" }}>{data.pax} Pers.</span>
                     </div>
-                  </div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#111" }}>{data.guest}</div>
-                  <div style={{ fontSize: 11, color: "#999", marginTop: 3 }}>RND-{Math.floor(Math.random() * 9000 + 1000)}</div>
-                  <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
-                    {[
-                      { label: "Bearbeiten", icon: <Pencil size={11} /> },
-                      { label: "Mail",       icon: <Mail size={11} /> },
-                      { label: "Stornieren", icon: <Ban size={11} /> },
-                    ].map(b => (
-                      <button key={b.label}
-                        style={{ flex: 1, padding: 7, borderRadius: 6, border: "1px solid #ddd", background: "#fff", fontSize: 10, fontWeight: 700, color: "#666", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                        {b.icon} {b.label}
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>{data.guest}</div>
+                    <div style={{ fontSize: 10, color: "#bbb", marginTop: 2 }}>RND-{(data.guest.charCodeAt(0) * 137 + 1000) % 9000 + 1000}</div>
+                    {/* Action buttons */}
+                    <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                      <button onClick={() => setMode("edit")}
+                        style={{ flex: 1, padding: "7px 0", borderRadius: 6, border: "1px solid #ddd", background: "#fff", fontSize: 10, fontWeight: 700, color: "#444", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                        <Pencil size={11} /> Bearbeiten
                       </button>
-                    ))}
+                      <button
+                        style={{ flex: 1, padding: "7px 0", borderRadius: 6, border: "1px solid #ddd", background: "#fff", fontSize: 10, fontWeight: 700, color: "#444", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                        <Mail size={11} /> Mail
+                      </button>
+                      <button
+                        style={{ flex: 1, padding: "7px 0", borderRadius: 6, border: "1px solid #ffcccc", background: "#fff5f5", fontSize: 10, fontWeight: 700, color: "#cc3333", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                        <Ban size={11} /> Stornieren
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Checkin / Lock / Mail */}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => setCheckedIn(v => !v)}
+                      style={{ flex: 1, padding: "8px 0", borderRadius: 6, background: checkedIn ? "#e8f5e8" : "#fff", border: checkedIn ? "1px solid #a8d8a8" : "1px solid #ddd", fontSize: 10, fontWeight: 700, color: checkedIn ? "#2a7a2a" : "#555", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                      <LogIn size={11} /> {checkedIn ? "Anwesend" : "Einchecken"}
+                    </button>
+                    <button
+                      style={{ flex: 1, padding: "8px 0", borderRadius: 6, background: "#fff", border: "1px solid #ddd", fontSize: 10, fontWeight: 700, color: "#555", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                      <Lock size={11} /> Sperren
+                    </button>
+                    <button
+                      style={{ flex: 1, padding: "8px 0", borderRadius: 6, background: "#fff", border: "1px solid #ddd", fontSize: 10, fontWeight: 700, color: "#555", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                      <Mail size={11} /> Mail
+                    </button>
+                  </div>
+
+                  {/* Note */}
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: "#666", display: "block", marginBottom: 4 }}>Interne Notiz</label>
+                    <textarea
+                      value={note}
+                      onChange={e => setNote(e.target.value)}
+                      placeholder="Nicht für Gäste sichtbar..."
+                      style={{ width: "100%", height: 60, padding: "8px 10px", fontSize: 11, border: "1px solid #ddd", borderRadius: 6, resize: "none", outline: "none", boxSizing: "border-box", color: "#333" }}
+                    />
                   </div>
                 </div>
               )}
-            </div>
+            </>
+          )}
 
-            {/* Footer */}
-            <div style={{ background: "#f8f8f8", borderTop: "1px solid #eee", padding: "14px 18px", flexShrink: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-              <button style={{ width: "100%", padding: "10px 0", borderRadius: 7, background: "#2a2a2a", color: "#fff", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>
-                + Neue Reservierung
-              </button>
-              <div style={{ display: "flex", gap: 6 }}>
-                {[
-                  { label: "Einchecken", icon: <LogIn size={11} /> },
-                  { label: "Sperren",    icon: <Lock size={11} /> },
-                  { label: "Mail",       icon: <Mail size={11} /> },
-                ].map(b => (
-                  <button key={b.label}
-                    style={{ flex: 1, padding: "7px 0", borderRadius: 6, background: "#fff", border: "1px solid #ddd", fontSize: 10, fontWeight: 700, color: "#666", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                    {b.icon} {b.label}
-                  </button>
-                ))}
+          {/* Edit form (inline) */}
+          {mode === "edit" && data && (
+            <div style={{ padding: "0 16px 16px" }}>
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <button onClick={() => setMode("view")}
+                  style={{ flex: 1, padding: "9px 0", borderRadius: 7, background: "#f5f5f5", color: "#555", fontSize: 12, fontWeight: 600, border: "1px solid #ddd", cursor: "pointer" }}>
+                  Abbrechen
+                </button>
+                <button onClick={() => setMode("view")}
+                  style={{ flex: 2, padding: "9px 0", borderRadius: 7, background: "#1a1a1a", color: "#fff", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>
+                  Änderungen speichern
+                </button>
               </div>
-              <textarea
-                placeholder="Interne Notiz (nicht für Gäste sichtbar)..."
-                style={{ width: "100%", height: 52, padding: "8px 10px", fontSize: 11, border: "1px solid #ddd", borderRadius: 6, resize: "none", outline: "none", boxSizing: "border-box" }}
-              />
             </div>
-          </>
+          )}
+        </div>
+
+        {/* Footer: + Neue Reservierung */}
+        {data && mode === "view" && !showBookingForm && (
+          <div style={{ background: "#f8f8f8", borderTop: "1px solid #eee", padding: "12px 16px", flexShrink: 0 }}>
+            <button onClick={() => setMode("book")}
+              style={{ width: "100%", padding: "10px 0", borderRadius: 7, background: "#1a1a1a", color: "#fff", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <CalendarDays size={14} /> + Neue Reservierung
+            </button>
+          </div>
         )}
       </div>
     </>
@@ -1179,6 +1258,7 @@ export default function RaumplanPage() {
   const [selRowIdx, setSelRowIdx] = useState<number | null>(null)
   const [currentTime, setCurrentTime] = useState("")
   const [editorOpen, setEditorOpen] = useState(false)
+  const [showBookingForm, setShowBookingForm] = useState(false)
 
   useEffect(() => {
     const tick = () => {
@@ -1200,6 +1280,12 @@ export default function RaumplanPage() {
     setPanelData(null)
     setSelTableId(null)
     setSelRowIdx(null)
+    setShowBookingForm(false)
+  }
+
+  const openNewReservation = () => {
+    setPanelData(null)
+    setShowBookingForm(true)
   }
 
   const openTable = (id: string) => {
@@ -1247,11 +1333,11 @@ export default function RaumplanPage() {
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
         {/* Left: reservation list — full height */}
-        <ReservationPanel selectedRow={selRowIdx} onRowClick={openRow} />
+        <ReservationPanel selectedRow={selRowIdx} onRowClick={openRow} onNewReservation={openNewReservation} />
 
         {/* Right: area tabs bar + floor plan stacked */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <AreaTabsBar activeArea={activeArea} setActiveArea={setActiveArea} onEditClick={() => setEditorOpen(true)} />
+          <AreaTabsBar activeArea={activeArea} setActiveArea={setActiveArea} />
           <div style={{ flex: 1, background: "#111111", overflow: "hidden" }}>
             <FloorPlan selId={selTableId} onTableClick={openTable} activeArea={activeArea} />
           </div>
@@ -1259,7 +1345,7 @@ export default function RaumplanPage() {
 
       </div>
 
-      <SlidePanel data={panelData} onClose={closePanel} />
+      <SlidePanel data={panelData} onClose={closePanel} showBookingForm={showBookingForm} onNewReservation={openNewReservation} />
 
       {/* Full-screen editor modal */}
       {editorOpen && (
