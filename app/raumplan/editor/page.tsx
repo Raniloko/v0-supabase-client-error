@@ -684,7 +684,7 @@ function AreaSelector({ active, onChange }: { active: string; onChange: (id: str
   )
 }
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
+// ─── Toast ─────────────────────────────��──────────────────────────────────────
 
 interface Toast { id: string; type: "success" | "error" | "info"; text: string }
 
@@ -924,23 +924,24 @@ export function EmbeddedEditor({ initialArea = "restaurant140" }: { initialArea?
     const obj = objects.find(o => o.id === id)
     if (!obj || obj.locked) return
 
+    // Compute the NEW selection BEFORE setting state, so origPositions is correct
+    let nextSelection: Set<string>
     if (e.shiftKey) {
-      setSelectedIds(prev => {
-        const n = new Set(prev)
-        n.has(id) ? n.delete(id) : n.add(id)
-        return n
-      })
+      nextSelection = new Set(selectedIds)
+      nextSelection.has(id) ? nextSelection.delete(id) : nextSelection.add(id)
     } else {
-      if (!selectedIds.has(id)) setSelectedIds(new Set([id]))
+      // If already in selection keep multi-select, else reset to just this id
+      nextSelection = selectedIds.has(id) ? new Set(selectedIds) : new Set([id])
     }
+    setSelectedIds(nextSelection)
 
     const pt = svgPoint(e.clientX, e.clientY)
-    const selObjs = selectedIds.has(id)
-      ? objects.filter(o => selectedIds.has(o.id) || o.id === id)
-      : objects.filter(o => o.id === id)
+    const selObjs = objects.filter(o => nextSelection.has(o.id))
 
+    // Guard: always include the dragged object even if selection is somehow empty
+    const ids = new Set([...nextSelection, id])
     const origPositions: Record<string, { x: number; y: number }> = {}
-    selObjs.forEach(o => { origPositions[o.id] = { x: o.x, y: o.y } })
+    objects.filter(o => ids.has(o.id)).forEach(o => { origPositions[o.id] = { x: o.x, y: o.y } })
 
     dragRef.current = { id, startX: pt.x, startY: pt.y, origPositions }
     ;(e.target as Element).setPointerCapture(e.pointerId)
