@@ -11,7 +11,7 @@ import { RoomGeometry, AREA_TABLE_DEFS, AREA_CANVAS } from "@/lib/floor-geometry
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ObjType    = "table" | "billiard" | "tv"
+type ObjType    = "table" | "billiard" | "bottle" | "line"
 type StatusType = "free" | "reserved" | "occupied" | "blocked"
 
 interface FloorObject {
@@ -28,6 +28,9 @@ interface FloorObject {
   width?:    number
   height?:   number
   locked?:   boolean
+  // line endpoints
+  x2?:       number
+  y2?:       number
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -51,8 +54,8 @@ const DEFAULT_W  = 58   // must match floor-geometry hw+6
 const DEFAULT_H  = 54   // must match floor-geometry vh+6
 const BILLIARD_W = 220  // must match floor-geometry billiard w
 const BILLIARD_H = 136  // must match floor-geometry billiard h
-const TV_W       = 120  // default TV width
-const TV_H       = 72   // default TV height
+const BOTTLE_W   = 20   // bottle width
+const BOTTLE_H   = 50   // bottle height
 const GRID_SZ    = 10
 
 // ─── Per-Area Default Layouts ─────────────────────────────────────────────────
@@ -257,25 +260,33 @@ function BilliardShape({ obj, selected, onPointerDown, onDoubleTap }: {
   )
 }
 
-// ─── TV Shape ─────────────────────────────────────────────────────────────────
+// ─── Bottle Shape ─────────────────────────────────────────────────────────────
 
-function TVShape({ obj, selected, onPointerDown, onDoubleTap }: {
+function BottleShape({ obj, selected, onPointerDown, onDoubleTap }: {
   obj: FloorObject
   selected: boolean
   onPointerDown: (e: React.PointerEvent, id: string) => void
   onDoubleTap: (id: string) => void
 }) {
-  const w  = obj.width  ?? TV_W
-  const h  = obj.height ?? TV_H
+  const w  = obj.width  ?? BOTTLE_W
+  const h  = obj.height ?? BOTTLE_H
   const cx = obj.x + w / 2
   const cy = obj.y + h / 2
-  const hitPad = 10
+  const hitPad = 14
 
-  // Stand dimensions
-  const standW = Math.round(w * 0.28)
-  const standH = Math.round(h * 0.14)
-  const legW   = Math.round(w * 0.08)
-  const legH   = Math.round(h * 0.08)
+  // Bottle anatomy proportions
+  const neckW  = Math.round(w * 0.35)
+  const neckH  = Math.round(h * 0.28)
+  const bodyH  = Math.round(h * 0.60)
+  const capH   = Math.round(h * 0.09)
+  const shoulderH = Math.round(h * 0.10)
+
+  const neckX  = cx - neckW / 2
+  const bodyX  = obj.x
+  const bodyY  = obj.y + capH + neckH + shoulderH
+  const neckY  = obj.y + capH
+  const capX   = cx - neckW / 2 - 1
+  const capY   = obj.y
 
   return (
     <g
@@ -290,52 +301,93 @@ function TVShape({ obj, selected, onPointerDown, onDoubleTap }: {
         fill="transparent" stroke="none" />
 
       {selected && (
-        <rect x={obj.x - 8} y={obj.y - 8} width={w + 16} height={h + 16} rx={7}
-          fill="none" stroke="#c9a84c" strokeWidth={2} strokeDasharray="5 3" opacity={0.85} />
+        <rect x={obj.x - 10} y={obj.y - 10} width={w + 20} height={h + 20} rx={6}
+          fill="none" stroke="#c9a84c" strokeWidth={2} strokeDasharray="5 3" opacity={0.9} />
       )}
 
-      {/* TV outer bezel */}
-      <rect x={obj.x} y={obj.y} width={w} height={h - standH - legH} rx={5}
-        fill="#1a1a2e" stroke="#3a3a5a" strokeWidth={2.5} />
+      {/* Bottle body */}
+      <rect x={bodyX} y={bodyY} width={w} height={bodyH} rx={5}
+        fill="#1e3a1e" stroke="#2d5a2d" strokeWidth={1.5} />
 
-      {/* Screen */}
-      <rect x={obj.x + 6} y={obj.y + 6} width={w - 12} height={h - standH - legH - 12} rx={3}
-        fill="#0d1a2e" />
+      {/* Shoulder (trapezoid via polygon) */}
+      <polygon
+        points={`${bodyX},${bodyY} ${bodyX + w},${bodyY} ${neckX + neckW},${neckY + neckH} ${neckX},${neckY + neckH}`}
+        fill="#1e3a1e" stroke="#2d5a2d" strokeWidth={1} />
 
-      {/* Screen glow */}
-      <rect x={obj.x + 6} y={obj.y + 6} width={w - 12} height={h - standH - legH - 12} rx={3}
-        fill="rgba(41,182,246,0.08)" />
+      {/* Neck */}
+      <rect x={neckX} y={neckY} width={neckW} height={neckH} rx={3}
+        fill="#1a301a" stroke="#2d5a2d" strokeWidth={1} />
 
-      {/* Screen content lines */}
-      <line x1={obj.x + 12} y1={cy - 8} x2={obj.x + w - 12} y2={cy - 8}
-        stroke="rgba(255,255,255,0.12)" strokeWidth={1} />
-      <line x1={obj.x + 12} y1={cy} x2={obj.x + w - 12} y2={cy}
-        stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
-      <line x1={obj.x + 12} y1={cy + 8} x2={obj.x + w - 12} y2={cy + 8}
-        stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
+      {/* Cap */}
+      <rect x={capX} y={capY} width={neckW + 2} height={capH} rx={2}
+        fill="#c9a84c" />
 
-      {/* Stand neck */}
-      <rect x={cx - legW / 2} y={obj.y + h - standH - legH} width={legW} height={legH}
-        fill="#2a2a3e" />
+      {/* Bottle highlight */}
+      <rect x={bodyX + 3} y={bodyY + 6} width={4} height={bodyH - 18} rx={2}
+        fill="rgba(255,255,255,0.12)" />
 
-      {/* Stand base */}
-      <rect x={cx - standW / 2} y={obj.y + h - standH} width={standW} height={standH} rx={3}
-        fill="#2a2a3e" stroke="#3a3a5a" strokeWidth={1} />
+      {/* Label stripe on body */}
+      <rect x={bodyX + 2} y={bodyY + Math.round(bodyH * 0.25)} width={w - 4} height={Math.round(bodyH * 0.45)} rx={2}
+        fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.08)" strokeWidth={0.5} />
 
-      {/* Power LED */}
-      <circle cx={obj.x + w - 10} cy={obj.y + h - standH - legH - 6} r={2.5}
-        fill="#1db954" opacity={0.9} />
-
-      {/* Label */}
-      <text x={cx} y={obj.y + (h - standH - legH) / 2 + 5} textAnchor="middle"
-        fill="rgba(255,255,255,0.55)" fontSize={11} fontWeight="bold"
+      {/* Label text */}
+      <text
+        x={cx} y={bodyY + Math.round(bodyH * 0.52)}
+        textAnchor="middle" dominantBaseline="middle"
+        fill="rgba(255,255,255,0.45)" fontSize={7} fontWeight="bold"
         fontFamily="'Bebas Neue', cursive"
         style={{ pointerEvents: "none", userSelect: "none" }}>
-        {obj.label || "TV"}
+        {obj.label || ""}
       </text>
 
       {obj.locked && (
-        <text x={cx + 16} y={obj.y + 14} fill="#c9a84c" fontSize={9}
+        <text x={cx + 10} y={obj.y + 10} fill="#c9a84c" fontSize={8}
+          style={{ pointerEvents: "none", userSelect: "none" }}>&#128274;</text>
+      )}
+    </g>
+  )
+}
+
+// ─── Line Shape ───────────────────────────────────────────────────────────────
+
+function LineShape({ obj, selected, onPointerDown }: {
+  obj: FloorObject
+  selected: boolean
+  onPointerDown: (e: React.PointerEvent, id: string) => void
+}) {
+  const x1 = obj.x
+  const y1 = obj.y
+  const x2 = obj.x2 ?? obj.x + 100
+  const y2 = obj.y2 ?? obj.y
+  const mx = (x1 + x2) / 2
+  const my = (y1 + y2) / 2
+
+  return (
+    <g
+      onPointerDown={e => onPointerDown(e, obj.id)}
+      style={{ cursor: obj.locked ? "not-allowed" : "move", touchAction: "none" }}
+    >
+      {/* Wide invisible hit area */}
+      <line x1={x1} y1={y1} x2={x2} y2={y2}
+        stroke="transparent" strokeWidth={20} />
+
+      {/* Visual line */}
+      <line x1={x1} y1={y1} x2={x2} y2={y2}
+        stroke={selected ? "#c9a84c" : "rgba(201,168,76,0.45)"}
+        strokeWidth={selected ? 2.5 : 1.5}
+        strokeDasharray={selected ? "none" : "6 3"} />
+
+      {/* Endpoint handles (only when selected) */}
+      {selected && (
+        <>
+          <circle cx={x1} cy={y1} r={5} fill="#c9a84c" opacity={0.9} />
+          <circle cx={x2} cy={y2} r={5} fill="#c9a84c" opacity={0.9} />
+          <circle cx={mx} cy={my} r={4} fill="rgba(201,168,76,0.5)" stroke="#c9a84c" strokeWidth={1} />
+        </>
+      )}
+
+      {obj.locked && (
+        <text x={mx + 6} y={my - 4} fill="#c9a84c" fontSize={8}
           style={{ pointerEvents: "none", userSelect: "none" }}>&#128274;</text>
       )}
     </g>
@@ -409,7 +461,7 @@ function PropsPanel({ obj, onChange, onDelete, onDuplicate, onLockToggle, onClos
             padding: "3px 8px", borderRadius: 5, fontSize: 11, fontWeight: 700,
             background: "rgba(201,168,76,0.1)", color: "#c9a84c",
           }}>
-            {obj.type === "billiard" ? "Billard" : obj.type === "tv" ? "Fernseher" : "Tisch"}
+            {obj.type === "billiard" ? "Billard" : obj.type === "bottle" ? "Flasche" : obj.type === "line" ? "Linie" : "Tisch"}
           </span>
         </div>
 
@@ -432,8 +484,16 @@ function PropsPanel({ obj, onChange, onDelete, onDuplicate, onLockToggle, onClos
             style={{ width: "100%", accentColor: "#c9a84c", height: 8 }} />
         </div>
 
+        {/* Line endpoints */}
+        {obj.type === "line" && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {F("X2", obj.x2 ?? obj.x + 100, "x2", "number")}
+            {F("Y2", obj.y2 ?? obj.y, "y2", "number")}
+          </div>
+        )}
+
         {/* Seats */}
-        {obj.type !== "billiard" && obj.type !== "tv" && (
+        {obj.type !== "billiard" && obj.type !== "bottle" && obj.type !== "line" && (
           <div className="flex flex-col gap-2">
             <label style={{ color: "#666", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
               Sitzplaetze: {obj.seats}
@@ -444,8 +504,8 @@ function PropsPanel({ obj, onChange, onDelete, onDuplicate, onLockToggle, onClos
           </div>
         )}
 
-        {/* Status */}
-        <div className="flex flex-col gap-1">
+        {/* Status — only for tables/billiard */}
+        {obj.type !== "bottle" && obj.type !== "line" && <div className="flex flex-col gap-1">
           <label style={{ color: "#666", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Status</label>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
             {(["free", "reserved", "occupied", "blocked"] as StatusType[]).map(st => (
@@ -461,7 +521,7 @@ function PropsPanel({ obj, onChange, onDelete, onDuplicate, onLockToggle, onClos
               </button>
             ))}
           </div>
-        </div>
+        </div>}
 
         {/* Area */}
         <div className="flex flex-col gap-1">
@@ -519,14 +579,14 @@ function PropsPanel({ obj, onChange, onDelete, onDuplicate, onLockToggle, onClos
 
 function Toolbar({
   tool, setTool, snapOn, setSnapOn, showGrid, setShowGrid, zoom, setZoom,
-  onAddTable, onAddBilliard, onAddTV, onSave, saving, hasUnsaved,
+  onAddTable, onAddBilliard, onAddBottle, onAddLine, onSave, saving, hasUnsaved,
   onUndo, onRedo, canUndo, canRedo, selCount, onDeleteSel, onAlignH, onAlignV,
 }: {
   tool: string; setTool: (t: string) => void
   snapOn: boolean; setSnapOn: (v: boolean) => void
   showGrid: boolean; setShowGrid: (v: boolean) => void
   zoom: number; setZoom: (v: number) => void
-  onAddTable: () => void; onAddBilliard: () => void; onAddTV: () => void
+  onAddTable: () => void; onAddBilliard: () => void; onAddBottle: () => void; onAddLine: () => void
   onSave: () => void; saving: boolean; hasUnsaved: boolean
   onUndo: () => void; onRedo: () => void; canUndo: boolean; canRedo: boolean
   selCount: number; onDeleteSel: () => void
@@ -586,14 +646,23 @@ function Toolbar({
         }}>
         <Plus className="w-4 h-4" /> Billard
       </button>
-      <button onClick={onAddTV}
+      <button onClick={onAddBottle}
         style={{
           display: "flex", alignItems: "center", gap: 6,
           padding: "0 14px", height: 44, borderRadius: 8, fontSize: 13, fontWeight: 700,
-          background: "rgba(41,182,246,0.1)", border: "1px solid rgba(41,182,246,0.3)",
-          color: "#29b6f6", cursor: "pointer", flexShrink: 0,
+          background: "rgba(26,58,26,0.3)", border: "1px solid rgba(45,90,45,0.5)",
+          color: "#5aaa5a", cursor: "pointer", flexShrink: 0,
         }}>
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="15" x="2" y="3" rx="2"/><polyline points="8 21 12 17 16 21"/></svg> Fernseher
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 2H9"/><path d="M15 2a2 2 0 0 1 2 2v1a4 4 0 0 1 1 2.6V20a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7.6A4 4 0 0 1 7 5V4a2 2 0 0 1 2-2"/><path d="M6 10h12"/></svg> Flasche
+      </button>
+      <button onClick={onAddLine}
+        style={{
+          display: "flex", alignItems: "center", gap: 6,
+          padding: "0 14px", height: 44, borderRadius: 8, fontSize: 13, fontWeight: 700,
+          background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.25)",
+          color: "#a88a3a", cursor: "pointer", flexShrink: 0,
+        }}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg> Linie
       </button>
 
       <Sep />
@@ -822,8 +891,10 @@ export function EmbeddedEditor({ initialArea = "restaurant140" }: { initialArea?
           label:     r.label as string,
           area_id:   r.area_id as string,
           data_json: (r.data_json as Record<string, unknown>) ?? {},
-          width:     r.type === "billiard" ? BILLIARD_W : r.type === "tv" ? (r.width ? Number(r.width) : TV_W) : (r.width ? Number(r.width) : DEFAULT_W),
-          height:    r.type === "billiard" ? BILLIARD_H : r.type === "tv" ? (r.height ? Number(r.height) : TV_H) : (r.height ? Number(r.height) : DEFAULT_H),
+          width:     r.type === "billiard" ? BILLIARD_W : r.type === "bottle" ? (r.width ? Number(r.width) : BOTTLE_W) : (r.width ? Number(r.width) : DEFAULT_W),
+          height:    r.type === "billiard" ? BILLIARD_H : r.type === "bottle" ? (r.height ? Number(r.height) : BOTTLE_H) : (r.height ? Number(r.height) : DEFAULT_H),
+          x2:        r.x2 != null ? Number(r.x2) : undefined,
+          y2:        r.y2 != null ? Number(r.y2) : undefined,
           locked:    false,
         }))
         setObjects(mapped)
@@ -923,17 +994,31 @@ export function EmbeddedEditor({ initialArea = "restaurant140" }: { initialArea?
     toast("info", "Billardtisch hinzugefuegt")
   }
 
-  const addTV = () => {
+  const addBottle = () => {
     const id = uid()
     mutate(prev => [...prev, {
-      id, type: "tv" as ObjType,
+      id, type: "bottle" as ObjType,
       x: snap(100 + Math.random() * 200, snapOn), y: snap(60 + Math.random() * 120, snapOn),
       rotation: 0, seats: 0, status: "free",
-      label: `TV ${objects.filter(o => o.type === "tv").length + 1}`,
-      area_id: activeArea, data_json: {}, width: TV_W, height: TV_H, locked: false,
+      label: ``,
+      area_id: activeArea, data_json: {}, width: BOTTLE_W, height: BOTTLE_H, locked: false,
     }])
     setSelectedIds(new Set([id]))
-    toast("info", "Fernseher hinzugefuegt")
+    toast("info", "Flasche hinzugefuegt")
+  }
+
+  const addLine = () => {
+    const id = uid()
+    const startX = snap(80 + Math.random() * 200, snapOn)
+    const startY = snap(80 + Math.random() * 150, snapOn)
+    mutate(prev => [...prev, {
+      id, type: "line" as ObjType,
+      x: startX, y: startY, x2: startX + 120, y2: startY,
+      rotation: 0, seats: 0, status: "free", label: "",
+      area_id: activeArea, data_json: {}, locked: false,
+    }])
+    setSelectedIds(new Set([id]))
+    toast("info", "Linie hinzugefuegt")
   }
 
   const alignH = () => {
@@ -1088,7 +1173,7 @@ export function EmbeddedEditor({ initialArea = "restaurant140" }: { initialArea?
         snapOn={snapOn} setSnapOn={setSnapOn}
         showGrid={showGrid} setShowGrid={setShowGrid}
         zoom={zoom} setZoom={setZoom}
-        onAddTable={addTable} onAddBilliard={addBilliard} onAddTV={addTV}
+        onAddTable={addTable} onAddBilliard={addBilliard} onAddBottle={addBottle} onAddLine={addLine}
         onSave={save} saving={saving} hasUnsaved={hasUnsaved}
         onUndo={undo} onRedo={redo}
         canUndo={history.length > 0} canRedo={future.length > 0}
@@ -1159,13 +1244,20 @@ export function EmbeddedEditor({ initialArea = "restaurant140" }: { initialArea?
                       onPointerDown={handlePointerDown}
                       onDoubleTap={id => setSelectedIds(new Set([id]))}
                     />
-                  ) : obj.type === "tv" ? (
-                    <TVShape
+                  ) : obj.type === "bottle" ? (
+                    <BottleShape
                       key={obj.id}
                       obj={obj}
                       selected={selectedIds.has(obj.id)}
                       onPointerDown={handlePointerDown}
                       onDoubleTap={id => setSelectedIds(new Set([id]))}
+                    />
+                  ) : obj.type === "line" ? (
+                    <LineShape
+                      key={obj.id}
+                      obj={obj}
+                      selected={selectedIds.has(obj.id)}
+                      onPointerDown={handlePointerDown}
                     />
                   ) : (
                     <TableShape
