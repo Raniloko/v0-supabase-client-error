@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import {
   LayoutDashboard, Map, CalendarDays, BarChart2, Clock,
   List, RefreshCw, Mail, Activity, FileText, Settings,
-  Dices, Sofa, Tv2, Trophy, Crown, ChevronRight,
+  Dices, Sofa, Tv2, Trophy, Crown, ChevronRight, PenLine,
 } from "lucide-react"
 
 const NAV = [
@@ -14,6 +14,7 @@ const NAV = [
     items: [
       { href: "/dashboard",              icon: LayoutDashboard, label: "Dashboard" },
       { href: "/dashboard/raumplan",     icon: Map,             label: "Raumplan" },
+      { href: "/raumplan/editor",        icon: PenLine,         label: "Grundriss Editor" },
       { href: "/dashboard/reservierungen", icon: CalendarDays,  label: "Reservierungen", badge: true },
       { href: "/dashboard/kalender",     icon: Clock,           label: "Kalender" },
       { href: "/dashboard/auslastung",   icon: BarChart2,       label: "Auslastung" },
