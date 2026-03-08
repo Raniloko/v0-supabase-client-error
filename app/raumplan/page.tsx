@@ -941,14 +941,21 @@ export default function RaumplanPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden", fontFamily: "'DM Sans', sans-serif", background: "#111" }}>
       <Topbar currentTime={currentTime} />
-      <AreaTabsBar activeArea={activeArea} setActiveArea={setActiveArea} onEditClick={() => setEditorOpen(true)} />
 
-      {/* Body */}
+      {/* Body — ReservationPanel stretches full height from Topbar down */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+
+        {/* Left: reservation list — full height */}
         <ReservationPanel selectedRow={selRowIdx} onRowClick={openRow} />
-        <div style={{ flex: 1, background: "#111111", overflow: "hidden" }}>
-          <FloorPlan selId={selTableId} onTableClick={openTable} activeArea={activeArea} />
+
+        {/* Right: area tabs bar + floor plan stacked */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <AreaTabsBar activeArea={activeArea} setActiveArea={setActiveArea} onEditClick={() => setEditorOpen(true)} />
+          <div style={{ flex: 1, background: "#111111", overflow: "hidden" }}>
+            <FloorPlan selId={selTableId} onTableClick={openTable} activeArea={activeArea} />
+          </div>
         </div>
+
       </div>
 
       <SlidePanel data={panelData} onClose={closePanel} />
