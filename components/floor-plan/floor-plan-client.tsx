@@ -5,12 +5,23 @@ import type { Area, Table, Reservation } from "@/lib/types"
 import TableShape from "./table-shape"
 import TableSidePanel from "./table-side-panel"
 import { useSearchParams, useRouter } from "next/navigation"
-import { Dices, Sofa, Tv2, Trophy, Crown } from "lucide-react"
+import { Dices, Sofa, Trophy, Crown } from "lucide-react"
+
+function TvIcon({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className={className} width="1em" height="1em">
+      <rect width="20" height="15" x="2" y="3" rx="2"/>
+      <polyline points="8 21 12 17 16 21"/>
+    </svg>
+  )
+}
 
 const AREA_ICONS: Record<string, React.ElementType> = {
   billard: Dices,
   salitos: Sofa,
-  rest140: Tv2,
+  rest140: TvIcon,
   rest75:  Trophy,
   vip:     Crown,
 }
