@@ -2,6 +2,12 @@
 import dynamic from "next/dynamic"
 import { useEffect, useRef, useState } from "react"
 import { RoomGeometry, AREA_TABLE_DEFS, AREA_CANVAS } from "@/lib/floor-geometry"
+import {
+  CalendarDays, ChevronLeft, ChevronRight, Cloud, BarChart2,
+  Users, User, Timer, Clock, ClipboardList, Settings, HelpCircle,
+  Bell, Menu, PencilRuler, X, CheckCheck, Check, PauseCircle,
+  AlertCircle, MapPin, Pencil, Mail, Ban, LogIn, Lock,
+} from "lucide-react"
 
 // Dynamic import prevents SSR crash – the editor uses browser-only APIs
 const EmbeddedEditor = dynamic(
@@ -82,78 +88,70 @@ const STATUS_COLOR: Record<TableStatus, { fill: string; stroke: string; text: st
 
 function Topbar({ currentTime }: { currentTime: string }) {
   const SEP = "1px solid #2a2a2a"
-  const iconBtn = {
-    width: 32, height: 32, borderRadius: 5, display: "flex", alignItems: "center",
+  const iconBtn: React.CSSProperties = {
+    width: 36, height: 36, borderRadius: 5, display: "flex", alignItems: "center",
     justifyContent: "center", cursor: "pointer", color: "#888", background: "transparent",
-    border: "none", fontSize: 16,
-  } as const
+    border: "none", flexShrink: 0,
+  }
+  const sepBtn: React.CSSProperties = { ...iconBtn, height: "100%", padding: "0 12px", borderLeft: SEP, borderRadius: 0, width: "auto" }
 
   return (
     <div
       className="flex items-stretch flex-shrink-0"
       style={{ height: 52, background: "#111111", borderBottom: SEP, userSelect: "none" }}
     >
-      {/* A – Logo */}
+      {/* A – Menu + Logo */}
       <div className="flex items-center gap-2 px-3" style={{ borderRight: SEP }}>
-        <button style={{ ...iconBtn, fontSize: 18 }}>☰</button>
+        <button style={iconBtn}><Menu size={18} /></button>
         <div style={{
           width: 32, height: 32, borderRadius: 6, background: "#f5a623",
           display: "flex", alignItems: "center", justifyContent: "center",
           fontWeight: 900, color: "#fff", fontSize: 18,
-        }}>Q</div>
+        }}>R</div>
       </div>
 
       {/* B – Jetzt */}
       <div className="flex items-center gap-1.5 px-3" style={{ borderRight: SEP, cursor: "pointer" }}>
-        <span style={{ fontSize: 16 }}>📅</span>
+        <CalendarDays size={15} color="#888" />
         <span style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>Jetzt</span>
-        <span style={{ color: "#888", fontSize: 14, marginLeft: 2 }}>‹</span>
+        <ChevronLeft size={13} color="#888" style={{ marginLeft: 2 }} />
       </div>
 
       {/* C – Date nav */}
       <div className="flex items-center" style={{ borderRight: SEP }}>
-        <button className="flex items-center justify-center" style={{ ...iconBtn, width: 30 }}>‹</button>
+        <button style={iconBtn}><ChevronLeft size={15} /></button>
         <span style={{ fontSize: 14, fontWeight: 600, color: "#fff", padding: "0 8px", whiteSpace: "nowrap" }}>Sa., 7 März</span>
-        <button className="flex items-center justify-center" style={{ ...iconBtn, width: 30 }}>›</button>
+        <button style={iconBtn}><ChevronRight size={15} /></button>
       </div>
 
       {/* D – Meal period */}
       <div className="flex items-center" style={{ borderRight: SEP }}>
-        <button className="flex items-center justify-center" style={{ ...iconBtn, width: 20, fontSize: 13 }}>‹</button>
+        <button style={iconBtn}><ChevronLeft size={13} /></button>
         <span style={{ fontSize: 13, fontWeight: 500, color: "#fff", padding: "0 6px", whiteSpace: "nowrap" }}>Abendessen</span>
-        <button className="flex items-center justify-center" style={{ ...iconBtn, width: 20, fontSize: 13 }}>›</button>
+        <button style={iconBtn}><ChevronRight size={13} /></button>
       </div>
 
-      {/* E – Time */}
+      {/* E – Time nav */}
       <div className="flex items-center" style={{ borderRight: SEP }}>
-        <button className="flex items-center justify-center" style={{ ...iconBtn, width: 30 }}>‹</button>
+        <button style={iconBtn}><ChevronLeft size={15} /></button>
         <span style={{ fontSize: 14, fontWeight: 700, color: "#fff", padding: "0 10px", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
           {currentTime}
         </span>
-        <button className="flex items-center justify-center" style={{ ...iconBtn, width: 30 }}>›</button>
+        <button style={iconBtn}><ChevronRight size={15} /></button>
       </div>
 
       {/* F – Right icons */}
       <div className="flex items-stretch ml-auto">
-        {[
-          { icon: "☁",  label: "Sync" },
-          { icon: "📈", label: "Stats" },
-        ].map(g => (
-          <button key={g.label} className="flex items-center justify-center"
-            style={{ ...iconBtn, height: "100%", padding: "0 12px", borderLeft: SEP, borderRadius: 0 }}>
-            <span style={{ fontSize: 16 }}>{g.icon}</span>
-          </button>
-        ))}
-        <div className="flex items-center gap-1 px-3" style={{ borderLeft: SEP }}>
-          <span style={{ fontSize: 12, color: "#ccc" }}>👥</span>
+        <button style={sepBtn}><Cloud size={16} /></button>
+        <button style={sepBtn}><BarChart2 size={16} /></button>
+        <div className="flex items-center gap-1.5 px-3" style={{ borderLeft: SEP }}>
+          <Users size={13} color="#ccc" />
           <span style={{ fontSize: 12, color: "#ccc" }}>37/<span style={{ fontWeight: 700, color: "#fff" }}>68</span></span>
         </div>
-        {["👤", "⏱", "🕐", "📋"].map(icon => (
-          <button key={icon} className="flex items-center justify-center"
-            style={{ ...iconBtn, height: "100%", padding: "0 10px", borderLeft: SEP, borderRadius: 0 }}>
-            <span style={{ fontSize: 15 }}>{icon}</span>
-          </button>
-        ))}
+        <button style={sepBtn}><User size={15} /></button>
+        <button style={sepBtn}><Timer size={15} /></button>
+        <button style={sepBtn}><Clock size={15} /></button>
+        <button style={sepBtn}><ClipboardList size={15} /></button>
       </div>
     </div>
   )
@@ -264,9 +262,9 @@ function ReservationPanel({
       {/* Sub-tabs: Platziert / Bevorsteh. / Achtung */}
       <div style={{ display: "flex", borderBottom: "2px solid #ddd", padding: "0 12px", flexShrink: 0, background: "#f2f2f2" }}>
         {[
-          { key: "platziert" as const,    label: "Platziert",   badge: "👥 29", badgeBg: "#2a7a2a" },
-          { key: "bevorstehend" as const, label: "Bevorsteh.",  badge: "👥 31", badgeBg: "#333" },
-          { key: "achtung" as const,      label: "Achtung",     badge: "2",     badgeBg: "#cc5500" },
+          { key: "platziert" as const,    label: "Platziert",  count: "29", badgeBg: "#2a7a2a", icon: <Users size={11} /> },
+          { key: "bevorstehend" as const, label: "Bevorsteh.", count: "31", badgeBg: "#333",    icon: <Users size={11} /> },
+          { key: "achtung" as const,      label: "Achtung",    count: "2",  badgeBg: "#cc5500", icon: <AlertCircle size={11} /> },
         ].map(t => {
           const active = subTab === t.key
           return (
@@ -278,8 +276,8 @@ function ReservationPanel({
                 borderBottom: active ? "2px solid #111" : "2px solid transparent",
                 marginBottom: -2,
               }}>
-              <span style={{ background: t.badgeBg, color: "#fff", fontSize: 10, fontWeight: 800, padding: "1px 6px", borderRadius: 10 }}>
-                {t.badge}
+              <span style={{ background: t.badgeBg, color: "#fff", fontSize: 10, fontWeight: 800, padding: "1px 5px", borderRadius: 10, display: "flex", alignItems: "center", gap: 3 }}>
+                {t.icon} {t.count}
               </span>
               {t.label}
             </button>
@@ -296,10 +294,10 @@ function ReservationPanel({
         <span style={{ fontSize: 11, color: "#888" }}>↓</span>
         <span style={{ fontSize: 11, fontWeight: 700, color: "#333", textTransform: "uppercase", letterSpacing: "0.04em" }}>GAST</span>
         <span style={{ fontSize: 11, fontWeight: 700, color: "#333", textTransform: "uppercase", letterSpacing: "0.04em", marginLeft: 8 }}>NAME</span>
-        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-          {["⚙", "?", "🔔"].map(icon => (
-            <span key={icon} style={{ fontSize: 13, color: "#666", cursor: "pointer" }}>{icon}</span>
-          ))}
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+          <Settings size={14} color="#666" style={{ cursor: "pointer" }} />
+          <HelpCircle size={14} color="#666" style={{ cursor: "pointer" }} />
+          <Bell size={14} color="#666" style={{ cursor: "pointer" }} />
         </div>
       </div>
 
@@ -311,7 +309,7 @@ function ReservationPanel({
       }}>
         <span style={{ fontSize: 11, fontWeight: 700, color: "#333", textTransform: "uppercase", letterSpacing: "0.04em" }}>ABENDESSEN</span>
         <span style={{ fontSize: 11, color: "#666" }}>Gesamt 8</span>
-        <span style={{ fontSize: 11, color: "#666" }}>👥 31</span>
+        <span style={{ fontSize: 11, color: "#666", display: "flex", alignItems: "center", gap: 3 }}><Users size={11} /> 31</span>
       </div>
 
       {/* Rows */}
@@ -362,15 +360,15 @@ function ReservationPanel({
                   <span style={{ background: "#e07820", color: "#fff", fontSize: 9, fontWeight: 800, padding: "2px 5px", borderRadius: 4 }}>OB</span>
                 )}
                 {row.status === "double-check" && (
-                  <span style={{ color: "#2a7a2a", fontSize: 15, fontWeight: 800 }}>✓✓</span>
+                  <CheckCheck size={15} color="#2a7a2a" strokeWidth={2.5} />
                 )}
                 {row.status === "check" && (
-                  <span style={{ color: "#2a7a2a", fontSize: 15, fontWeight: 800 }}>✓</span>
+                  <Check size={15} color="#2a7a2a" strokeWidth={2.5} />
                 )}
                 {row.status === "check-pause" && (
                   <>
-                    <span style={{ color: "#2a7a2a", fontSize: 15, fontWeight: 800 }}>✓</span>
-                    <span style={{ background: "#555", color: "#fff", fontSize: 9, fontWeight: 800, padding: "2px 5px", borderRadius: 4 }}>⏸</span>
+                    <Check size={14} color="#2a7a2a" strokeWidth={2.5} />
+                    <PauseCircle size={13} color="#888" strokeWidth={2} />
                   </>
                 )}
               </div>
@@ -466,7 +464,7 @@ function TTable({
   )
 }
 
-// ─── Billiard Table ─────────���─────────────────────────────────────────────────
+// ─── Billiard Table ─────────���────────────────────────────────���────────────────
 
 function BTable({
   id, x, y, w, h, status, label, name, time, sel, onClick, transform,
@@ -692,7 +690,7 @@ function SlidePanel({ data, onClose }: { data: PanelData | null; onClose: () => 
 
             {/* Date row */}
             <div style={{ padding: "10px 18px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#333" }}>📅 Samstag, 8. März 2026</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#333", display: "flex", alignItems: "center", gap: 5 }}><CalendarDays size={13} /> Samstag, 8. März 2026</span>
               <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 20, ...statusPillStyle(data.status) }}>
                 {data.status}
               </span>
@@ -701,10 +699,10 @@ function SlidePanel({ data, onClose }: { data: PanelData | null; onClose: () => 
             {/* Body */}
             <div style={{ padding: "14px 18px", flex: 1 }}>
               {!data.guest ? (
-                <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa" }}>
-                  <div style={{ fontSize: 32, marginBottom: 12 }}>📅</div>
+                <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                  <CalendarDays size={36} color="#ccc" />
                   <div style={{ fontSize: 14, fontWeight: 600, color: "#666" }}>Keine Reservierungen heute</div>
-                  <div style={{ fontSize: 12, color: "#aaa", marginTop: 6 }}>Dieser Tisch ist frei verfügbar</div>
+                  <div style={{ fontSize: 12, color: "#aaa" }}>Dieser Tisch ist frei verfügbar</div>
                 </div>
               ) : (
                 <div style={{ background: "#f8f8f8", border: "1px solid #e8e8e8", borderRadius: 8, padding: "12px 14px" }}>
@@ -718,10 +716,14 @@ function SlidePanel({ data, onClose }: { data: PanelData | null; onClose: () => 
                   <div style={{ fontSize: 14, fontWeight: 600, color: "#111" }}>{data.guest}</div>
                   <div style={{ fontSize: 11, color: "#999", marginTop: 3 }}>RND-{Math.floor(Math.random() * 9000 + 1000)}</div>
                   <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
-                    {[{ label: "✏ Bearbeiten", hoverC: "#333" }, { label: "✉ Mail", hoverC: "#333" }, { label: "✕ Stornieren", hoverC: "#cc2222" }].map(b => (
+                    {[
+                      { label: "Bearbeiten", icon: <Pencil size={11} /> },
+                      { label: "Mail",       icon: <Mail size={11} /> },
+                      { label: "Stornieren", icon: <Ban size={11} /> },
+                    ].map(b => (
                       <button key={b.label}
-                        style={{ flex: 1, padding: 7, borderRadius: 6, border: "1px solid #ddd", background: "#fff", fontSize: 10, fontWeight: 700, color: "#666", cursor: "pointer" }}>
-                        {b.label}
+                        style={{ flex: 1, padding: 7, borderRadius: 6, border: "1px solid #ddd", background: "#fff", fontSize: 10, fontWeight: 700, color: "#666", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                        {b.icon} {b.label}
                       </button>
                     ))}
                   </div>
@@ -735,10 +737,14 @@ function SlidePanel({ data, onClose }: { data: PanelData | null; onClose: () => 
                 + Neue Reservierung
               </button>
               <div style={{ display: "flex", gap: 6 }}>
-                {["✓ Einchecken", "🔒 Sperren", "✉ Mail"].map(label => (
-                  <button key={label}
-                    style={{ flex: 1, padding: "7px 0", borderRadius: 6, background: "#fff", border: "1px solid #ddd", fontSize: 10, fontWeight: 700, color: "#666", cursor: "pointer" }}>
-                    {label}
+                {[
+                  { label: "Einchecken", icon: <LogIn size={11} /> },
+                  { label: "Sperren",    icon: <Lock size={11} /> },
+                  { label: "Mail",       icon: <Mail size={11} /> },
+                ].map(b => (
+                  <button key={b.label}
+                    style={{ flex: 1, padding: "7px 0", borderRadius: 6, background: "#fff", border: "1px solid #ddd", fontSize: 10, fontWeight: 700, color: "#666", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                    {b.icon} {b.label}
                   </button>
                 ))}
               </div>
@@ -819,7 +825,7 @@ function EditorModal({ areaId, onClose }: { areaId: string; onClose: () => void 
             cursor: "pointer", minWidth: 44, minHeight: 44,
           }}
         >
-          ✕ Schliessen
+          <X size={14} /> Schliessen
         </button>
       </div>
 
@@ -896,13 +902,69 @@ export default function RaumplanPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden", fontFamily: "'DM Sans', sans-serif", background: "#111" }}>
       <Topbar currentTime={currentTime} />
-      <AreaTabsBar activeArea={activeArea} setActiveArea={setActiveArea} onEditClick={() => setEditorOpen(true)} />
 
-      {/* Body */}
+      {/* AreaTabsBar removed – areas are now in right sidebar */}
+      {/* Body – full height below topbar */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+
+        {/* Left – Reservation list (full height) */}
         <ReservationPanel selectedRow={selRowIdx} onRowClick={openRow} />
+
+        {/* Center – Floor plan */}
         <div style={{ flex: 1, background: "#111111", overflow: "hidden" }}>
           <FloorPlan selId={selTableId} onTableClick={openTable} activeArea={activeArea} />
+        </div>
+
+        {/* Right – Area / Bereich sidebar */}
+        <div style={{
+          width: 220, flexShrink: 0, background: "#161616",
+          borderLeft: "1px solid #2a2a2a",
+          display: "flex", flexDirection: "column", overflow: "hidden",
+        }}>
+          {/* Header */}
+          <div style={{
+            height: 44, display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "0 14px", borderBottom: "1px solid #2a2a2a", flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#666", textTransform: "uppercase", letterSpacing: "0.07em" }}>Bereiche</span>
+            <button
+              onClick={() => setEditorOpen(true)}
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                fontSize: 10, color: "#c9a84c", padding: "4px 8px",
+                border: "1px solid rgba(201,168,76,0.3)", borderRadius: 5,
+                background: "rgba(201,168,76,0.07)", cursor: "pointer", whiteSpace: "nowrap",
+              }}
+            >
+              <PencilRuler size={11} /> Bearbeiten
+            </button>
+          </div>
+
+          {/* Area list */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
+            {AREA_TABS.map(tab => {
+              const active = activeArea === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveArea(tab.id)}
+                  style={{
+                    width: "100%", textAlign: "left",
+                    padding: "10px 14px",
+                    fontSize: 12, fontWeight: active ? 700 : 500,
+                    color: active ? "#fff" : "#777",
+                    background: active ? "rgba(255,255,255,0.07)" : "transparent",
+                    borderLeft: active ? "3px solid #c9a84c" : "3px solid transparent",
+                    border: "none", cursor: "pointer",
+                    transition: "all 0.12s",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {tab.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
       </div>
 
