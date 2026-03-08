@@ -4,38 +4,39 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import {
   Plus, Save, Trash2, RotateCcw, Grid, Lock, Unlock,
-  ZoomIn, ZoomOut, Maximize2, Copy, Layers, Settings2,
-  AlignLeft, AlignCenter, AlignRight, Table2, Circle,
-  Move, MousePointer, Type, Minus, ChevronDown, X, Check
+  ZoomIn, ZoomOut, Maximize2, Copy, Layers,
+  AlignLeft, AlignCenter, Move, MousePointer, X,
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ObjType = "table" | "billiard" | "wall" | "plant" | "logo"
+type ObjType    = "table" | "billiard"
 type StatusType = "free" | "reserved" | "occupied" | "blocked"
 
 interface FloorObject {
-  id: string
-  type: ObjType
-  x: number
-  y: number
-  rotation: number
-  seats: number
-  status: StatusType
-  label: string
-  area_id: string
+  id:        string
+  type:      ObjType
+  x:         number
+  y:         number
+  rotation:  number
+  seats:     number
+  status:    StatusType
+  label:     string
+  area_id:   string
   data_json: Record<string, unknown>
-  width?: number
-  height?: number
-  locked?: boolean
+  width?:    number
+  height?:   number
+  locked?:   boolean
 }
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const AREAS = [
-  { id: "restaurant140", label: "Restaurant 140 Zoll" },
-  { id: "billard",       label: "Billard Tisch" },
-  { id: "salitos",       label: "Salitos Lounge" },
-  { id: "restaurant75",  label: "Restaurant 75 Zoll" },
-  { id: "vip",           label: "VIP Raum" },
+  { id: "billard",       label: "Billard Tisch",          num: "1." },
+  { id: "salitos",       label: "Salitos Lounge / Outdoor",num: "2." },
+  { id: "restaurant140", label: "Restaurant 140 Zoll",    num: "3." },
+  { id: "restaurant75",  label: "Restaurant 75 Zoll / Sport", num: "4." },
+  { id: "vip",           label: "VIP Raum / Sport",       num: "5." },
 ]
 
 const STATUS_COLORS: Record<StatusType, string> = {
@@ -45,214 +46,290 @@ const STATUS_COLORS: Record<StatusType, string> = {
   blocked:  "#cc2222",
 }
 
-const DEFAULT_TABLE_W = 60
-const DEFAULT_TABLE_H = 60
-const BILLIARD_W = 108
+const DEFAULT_W  = 60
+const DEFAULT_H  = 60
+const BILLIARD_W = 110
 const BILLIARD_H = 68
-const GRID_SIZE = 10
+const GRID_SZ    = 10
+
+// ─── Per-Area Default Layouts ─────────────────────────────────────────────────
+// Each area starts with its own set of objects when the DB has none.
+
+function makeTable(
+  id: string, label: string, x: number, y: number,
+  area: string, seats = 4, status: StatusType = "free",
+  w = DEFAULT_W, h = DEFAULT_H
+): FloorObject {
+  return { id, type: "table", x, y, rotation: 0, seats, status, label, area_id: area, data_json: {}, width: w, height: h, locked: false }
+}
+function makeBilliard(
+  id: string, label: string, x: number, y: number,
+  area: string, rotation = 0, status: StatusType = "free"
+): FloorObject {
+  return { id, type: "billiard", x, y, rotation, seats: 0, status, label, area_id: area, data_json: {}, width: BILLIARD_W, height: BILLIARD_H, locked: false }
+}
+
+const DEFAULT_LAYOUTS: Record<string, FloorObject[]> = {
+  // ── 1. Billard Tisch ──────────────────────────────────────────────────────
+  billard: [
+    makeBilliard("b1", "Billard 1", 40,  20, "billard"),
+    makeBilliard("b2", "Billard 2", 180, 20, "billard", 0, "reserved"),
+    makeBilliard("b3", "Billard 3", 110, 160, "billard", -38),
+    makeTable("bt10", "10", 20, 170, "billard", 4),
+    makeTable("bt30", "30", 20, 280, "billard", 4),
+  ],
+
+  // ── 2. Salitos Lounge / Outdoor ────────────────────────────────────────────
+  salitos: [
+    makeTable("s1",  "S1",  40,  40, "salitos", 4),
+    makeTable("s2",  "S2",  140, 40, "salitos", 4),
+    makeTable("s3",  "S3",  240, 40, "salitos", 6, "free", 90, DEFAULT_H),
+    makeTable("s4",  "S4",  40,  160, "salitos", 4),
+    makeTable("s5",  "S5",  140, 160, "salitos", 4),
+    makeTable("s6",  "S6",  240, 160, "salitos", 4),
+    makeTable("s7",  "S7",  40,  280, "salitos", 2),
+    makeTable("s8",  "S8",  140, 280, "salitos", 2),
+    makeTable("s9",  "S9",  240, 280, "salitos", 4),
+    makeTable("s10", "S10", 360, 40,  "salitos", 4),
+    makeTable("s11", "S11", 360, 160, "salitos", 4),
+    makeTable("s12", "S12", 460, 40,  "salitos", 6, "free", 90, DEFAULT_H),
+    makeTable("s13", "S13", 460, 160, "salitos", 4),
+  ],
+
+  // ── 3. Restaurant 140 Zoll ────────────────────────────────────────────────
+  restaurant140: [
+    makeTable("t10", "10",  30,  30,  "restaurant140", 4),
+    makeTable("t30", "30",  30,  150, "restaurant140", 4),
+    makeTable("t52", "52",  190, 100, "restaurant140", 4),
+    makeTable("t53", "53",  290, 100, "restaurant140", 4),
+    makeTable("t54", "54",  400, 100, "restaurant140", 8, "free", 110, DEFAULT_H),
+    makeTable("t51", "51",  190, 210, "restaurant140", 4),
+    makeTable("t50", "50",  290, 210, "restaurant140", 4),
+    makeTable("t58", "58",  400, 210, "restaurant140", 4),
+    makeTable("t59", "59",  540, 210, "restaurant140", 2),
+    makeTable("t61", "61",  450, 30,  "restaurant140", 4, "occupied"),
+    makeTable("t60", "60",  550, 30,  "restaurant140", 4),
+    makeTable("t67", "67",  450, 110, "restaurant140", 4),
+    makeTable("t66", "66",  550, 110, "restaurant140", 4),
+    makeTable("t62", "62",  450, 300, "restaurant140", 4, "occupied"),
+    makeTable("t63", "63",  550, 300, "restaurant140", 4, "occupied"),
+    makeTable("t64", "64",  190, 330, "restaurant140", 4, "occupied"),
+    makeTable("t65", "65",  290, 330, "restaurant140", 4, "occupied"),
+    makeBilliard("b1", "Billard 1", 310, 20,  "restaurant140"),
+    makeBilliard("b2", "Billard 2", 450, 20,  "restaurant140", 0, "reserved"),
+    makeBilliard("b3", "Billard 3", 310, 150, "restaurant140", -38),
+  ],
+
+  // ── 4. Restaurant 75 Zoll / Sport ─────────────────────────────────────────
+  restaurant75: [
+    makeTable("r75_1",  "1",  40,  40,  "restaurant75", 4),
+    makeTable("r75_2",  "2",  140, 40,  "restaurant75", 4),
+    makeTable("r75_3",  "3",  240, 40,  "restaurant75", 4),
+    makeTable("r75_4",  "4",  340, 40,  "restaurant75", 4),
+    makeTable("r75_5",  "5",  40,  160, "restaurant75", 6, "free", 90, DEFAULT_H),
+    makeTable("r75_6",  "6",  160, 160, "restaurant75", 4),
+    makeTable("r75_7",  "7",  260, 160, "restaurant75", 4),
+    makeTable("r75_8",  "8",  360, 160, "restaurant75", 4),
+    makeTable("r75_9",  "9",  40,  280, "restaurant75", 4),
+    makeTable("r75_10", "10", 140, 280, "restaurant75", 4),
+    makeTable("r75_11", "11", 240, 280, "restaurant75", 4),
+    makeTable("r75_12", "12", 340, 280, "restaurant75", 2),
+    makeTable("r75_b1", "Bar 1", 480, 40,  "restaurant75", 2),
+    makeTable("r75_b2", "Bar 2", 480, 120, "restaurant75", 2),
+    makeTable("r75_b3", "Bar 3", 480, 200, "restaurant75", 2),
+  ],
+
+  // ── 5. VIP Raum / Sport ───────────────────────────────────────────────────
+  vip: [
+    makeTable("v1",  "VIP 1", 40,  40,  "vip", 6, "free", 90, DEFAULT_H),
+    makeTable("v2",  "VIP 2", 160, 40,  "vip", 6, "free", 90, DEFAULT_H),
+    makeTable("v3",  "VIP 3", 40,  170, "vip", 6, "free", 90, DEFAULT_H),
+    makeTable("v4",  "VIP 4", 160, 170, "vip", 6, "free", 90, DEFAULT_H),
+    makeTable("v5",  "VIP 5", 300, 40,  "vip", 8, "free", 130, DEFAULT_H),
+    makeTable("v6",  "VIP 6", 300, 170, "vip", 4),
+    makeTable("v7",  "VIP 7", 420, 40,  "vip", 4),
+    makeTable("v8",  "VIP 8", 420, 140, "vip", 4),
+    makeTable("v9",  "VIP 9", 420, 240, "vip", 4),
+    makeBilliard("vb1", "Sport B1", 540, 40,  "vip"),
+    makeBilliard("vb2", "Sport B2", 540, 150, "vip"),
+  ],
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function snapToGrid(v: number, snap: boolean) {
-  return snap ? Math.round(v / GRID_SIZE) * GRID_SIZE : v
-}
+function snap(v: number, on: boolean) { return on ? Math.round(v / GRID_SZ) * GRID_SZ : v }
+function uid()  { return `o${Date.now()}_${Math.random().toString(36).slice(2, 6)}` }
 
-function newId() {
-  return `obj_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
-}
+// ─── Table Shape (SVG cross) ──────────────────────────────────────────────────
 
-// ─── SVG Table Shape (cross / plus) ───────────────────────────────────────────
-
-function TableShape({
-  obj, selected, onPointerDown, onDoubleClick,
-}: {
+function TableShape({ obj, selected, onPointerDown, onDoubleTap }: {
   obj: FloorObject
   selected: boolean
   onPointerDown: (e: React.PointerEvent, id: string) => void
-  onDoubleClick: (id: string) => void
+  onDoubleTap: (id: string) => void
 }) {
-  const w = obj.width ?? DEFAULT_TABLE_W
-  const h = obj.height ?? DEFAULT_TABLE_H
+  const w  = obj.width  ?? DEFAULT_W
+  const h  = obj.height ?? DEFAULT_H
   const cx = obj.x + w / 2
   const cy = obj.y + h / 2
-  const fill = STATUS_COLORS[obj.status]
+  const fc = STATUS_COLORS[obj.status]
 
-  const vw = Math.round(w * 0.30), vh = Math.round(h * 0.80)
-  const hw = Math.round(w * 0.80), hh = Math.round(h * 0.30)
-  const chairSize = 7
-  const chairGap = 3
+  const vw = Math.round(w * 0.32), vh = Math.round(h * 0.82)
+  const hw = Math.round(w * 0.82), hh = Math.round(h * 0.32)
+  const cs = 8  // chair size
+  const cg = 4  // chair gap
 
-  // Chair positions
-  const chairs: { x: number; y: number; rot: number }[] = []
-  const seatCount = obj.seats || 4
-  const topSeats = Math.max(1, Math.floor(seatCount / 4))
-  const sideSeats = Math.max(1, Math.floor(seatCount / 4))
+  const seats = obj.seats || 4
+  const top   = Math.max(1, Math.round(seats / 4))
+  const side  = Math.max(1, Math.round(seats / 4))
 
-  for (let i = 0; i < topSeats; i++) {
-    const px = cx - ((topSeats - 1) / 2 - i) * (chairSize + 2)
-    chairs.push({ x: px, y: cy - vh / 2 - chairGap - chairSize / 2, rot: 0 })
-  }
-  for (let i = 0; i < topSeats; i++) {
-    const px = cx - ((topSeats - 1) / 2 - i) * (chairSize + 2)
-    chairs.push({ x: px, y: cy + vh / 2 + chairGap + chairSize / 2, rot: 0 })
-  }
-  for (let i = 0; i < sideSeats; i++) {
-    const py = cy - ((sideSeats - 1) / 2 - i) * (chairSize + 2)
-    chairs.push({ x: cx - hw / 2 - chairGap - chairSize / 2, y: py, rot: 90 })
-  }
-  for (let i = 0; i < sideSeats; i++) {
-    const py = cy - ((sideSeats - 1) / 2 - i) * (chairSize + 2)
-    chairs.push({ x: cx + hw / 2 + chairGap + chairSize / 2, y: py, rot: 90 })
-  }
+  // Larger invisible hit area for touch
+  const hitPad = 10
 
   return (
     <g
       transform={`rotate(${obj.rotation}, ${cx}, ${cy})`}
       onPointerDown={e => onPointerDown(e, obj.id)}
-      onDoubleClick={() => onDoubleClick(obj.id)}
-      style={{ cursor: obj.locked ? "not-allowed" : "move" }}
+      onDoubleClick={() => onDoubleTap(obj.id)}
+      style={{ cursor: obj.locked ? "not-allowed" : "move", touchAction: "none" }}
     >
-      {/* Selection ring */}
+      {/* Touch-friendly transparent hit area */}
+      <rect
+        x={obj.x - hitPad} y={obj.y - hitPad}
+        width={w + hitPad * 2} height={h + hitPad * 2}
+        fill="transparent" stroke="none"
+      />
+
       {selected && (
-        <rect
-          x={obj.x - 8} y={obj.y - 8} width={w + 16} height={h + 16} rx={6}
-          fill="none" stroke="#c9a84c" strokeWidth={1.5} strokeDasharray="5 3"
-          opacity={0.8}
-        />
+        <rect x={obj.x - 8} y={obj.y - 8} width={w + 16} height={h + 16} rx={7}
+          fill="none" stroke="#c9a84c" strokeWidth={2} strokeDasharray="5 3" opacity={0.85} />
       )}
 
-      {/* Chairs */}
-      {chairs.map((c, i) => (
-        <rect
-          key={i}
-          x={c.x - chairSize / 2} y={c.y - chairSize / 2}
-          width={chairSize} height={chairSize} rx={1.5}
-          fill={fill} opacity={0.55}
-          transform={`rotate(${c.rot}, ${c.x}, ${c.y})`}
-        />
-      ))}
+      {/* Top chairs */}
+      {Array.from({ length: top }).map((_, i) => {
+        const ox = cx - ((top - 1) / 2 - i) * (cs + 2)
+        return <rect key={`t${i}`} x={ox - cs / 2} y={cy - vh / 2 - cg - cs} width={cs} height={cs} rx={2} fill={fc} opacity={0.55} />
+      })}
+      {/* Bottom chairs */}
+      {Array.from({ length: top }).map((_, i) => {
+        const ox = cx - ((top - 1) / 2 - i) * (cs + 2)
+        return <rect key={`b${i}`} x={ox - cs / 2} y={cy + vh / 2 + cg} width={cs} height={cs} rx={2} fill={fc} opacity={0.55} />
+      })}
+      {/* Left chairs */}
+      {Array.from({ length: side }).map((_, i) => {
+        const oy = cy - ((side - 1) / 2 - i) * (cs + 2)
+        return <rect key={`l${i}`} x={cx - hw / 2 - cg - cs} y={oy - cs / 2} width={cs} height={cs} rx={2} fill={fc} opacity={0.55} />
+      })}
+      {/* Right chairs */}
+      {Array.from({ length: side }).map((_, i) => {
+        const oy = cy - ((side - 1) / 2 - i) * (cs + 2)
+        return <rect key={`r${i}`} x={cx + hw / 2 + cg} y={oy - cs / 2} width={cs} height={cs} rx={2} fill={fc} opacity={0.55} />
+      })}
 
       {/* Vertical bar */}
-      <rect x={cx - vw / 2} y={cy - vh / 2} width={vw} height={vh} rx={3}
-        fill={fill} opacity={0.92} />
+      <rect x={cx - vw / 2} y={cy - vh / 2} width={vw} height={vh} rx={4} fill={fc} />
       {/* Horizontal bar */}
-      <rect x={cx - hw / 2} y={cy - hh / 2} width={hw} height={hh} rx={3}
-        fill={fill} opacity={0.92} />
+      <rect x={cx - hw / 2} y={cy - hh / 2} width={hw} height={hh} rx={4} fill={fc} />
 
       {/* Label */}
       <text x={cx} y={cy + 4} textAnchor="middle"
         fill={obj.status === "free" ? "#1a1a2a" : "#fff"}
-        fontSize={11} fontWeight="bold" fontFamily="'Bebas Neue', cursive"
+        fontSize={12} fontWeight="bold" fontFamily="'Bebas Neue', cursive"
         style={{ pointerEvents: "none", userSelect: "none" }}>
         {obj.label}
       </text>
 
-      {/* Guest name tag */}
-      {(obj.status === "occupied" || obj.status === "reserved") && obj.data_json?.guest && (
-        <>
-          <rect x={obj.x} y={obj.y + h + 4} width={w} height={13} rx={2}
-            fill={obj.status === "occupied" ? "#156030" : "#7a5a18"} opacity={0.9} />
-          <text x={cx} y={obj.y + h + 14} textAnchor="middle"
-            fill="#fff" fontSize={8} fontWeight="bold"
-            style={{ pointerEvents: "none", userSelect: "none" }}>
-            {String(obj.data_json.guest)}
-          </text>
-        </>
-      )}
+      {/* Seat count badge */}
+      <text x={obj.x + 4} y={obj.y + 11} fill="rgba(0,0,0,0.45)" fontSize={8}
+        style={{ pointerEvents: "none", userSelect: "none" }}>
+        {obj.seats}
+      </text>
 
-      {/* Lock icon */}
+      {/* Lock */}
       {obj.locked && (
         <text x={cx + 14} y={obj.y + 12} fill="#c9a84c" fontSize={9}
-          style={{ pointerEvents: "none", userSelect: "none" }}>
-          &#128274;
-        </text>
+          style={{ pointerEvents: "none", userSelect: "none" }}>&#128274;</text>
       )}
     </g>
   )
 }
 
-// ─── Billiard Table Shape ──────────────────────────────────────────────────────
+// ─── Billiard Shape ───────────────────────────────────────────────────────────
 
-function BilliardShape({
-  obj, selected, onPointerDown, onDoubleClick,
-}: {
+function BilliardShape({ obj, selected, onPointerDown, onDoubleTap }: {
   obj: FloorObject
   selected: boolean
   onPointerDown: (e: React.PointerEvent, id: string) => void
-  onDoubleClick: (id: string) => void
+  onDoubleTap: (id: string) => void
 }) {
-  const w = obj.width ?? BILLIARD_W
-  const h = obj.height ?? BILLIARD_H
+  const w  = obj.width  ?? BILLIARD_W
+  const h  = obj.height ?? BILLIARD_H
   const cx = obj.x + w / 2
   const cy = obj.y + h / 2
   const railC = obj.status === "reserved" ? "#c9a84c" : obj.status === "occupied" ? "#1db954" : "#5a5a5a"
+  const hitPad = 10
 
   const pockets: [number, number][] = [
-    [obj.x + 8, obj.y + 8], [cx, obj.y + 7], [obj.x + w - 8, obj.y + 8],
-    [obj.x + 8, obj.y + h - 8], [cx, obj.y + h - 7], [obj.x + w - 8, obj.y + h - 8],
+    [obj.x + 8, obj.y + 8],    [cx, obj.y + 7],    [obj.x + w - 8, obj.y + 8],
+    [obj.x + 8, obj.y + h - 8],[cx, obj.y + h - 7],[obj.x + w - 8, obj.y + h - 8],
   ]
 
   return (
     <g
       transform={`rotate(${obj.rotation}, ${cx}, ${cy})`}
       onPointerDown={e => onPointerDown(e, obj.id)}
-      onDoubleClick={() => onDoubleClick(obj.id)}
-      style={{ cursor: obj.locked ? "not-allowed" : "move" }}
+      onDoubleClick={() => onDoubleTap(obj.id)}
+      style={{ cursor: obj.locked ? "not-allowed" : "move", touchAction: "none" }}
     >
+      {/* Hit area */}
+      <rect x={obj.x - hitPad} y={obj.y - hitPad}
+        width={w + hitPad * 2} height={h + hitPad * 2}
+        fill="transparent" stroke="none" />
+
       {selected && (
-        <rect x={obj.x - 8} y={obj.y - 8} width={w + 16} height={h + 16} rx={6}
-          fill="none" stroke="#c9a84c" strokeWidth={1.5} strokeDasharray="5 3" opacity={0.8} />
+        <rect x={obj.x - 10} y={obj.y - 10} width={w + 20} height={h + 20} rx={8}
+          fill="none" stroke="#c9a84c" strokeWidth={2} strokeDasharray="6 3" opacity={0.85} />
       )}
 
-      {/* Rail outer */}
-      <rect x={obj.x - 4} y={obj.y - 4} width={w + 8} height={h + 8} rx={5}
-        fill="none" stroke={railC} strokeWidth={3} />
+      {/* Outer rail */}
+      <rect x={obj.x - 4} y={obj.y - 4} width={w + 8} height={h + 8} rx={6}
+        fill="none" stroke={railC} strokeWidth={3.5} />
 
       {/* Felt */}
-      <rect x={obj.x} y={obj.y} width={w} height={h} rx={3} fill="#1a6b2a" />
+      <rect x={obj.x} y={obj.y} width={w} height={h} rx={4} fill="#1a6b2a" />
 
       {/* Center line */}
-      <line x1={obj.x + 10} y1={cy} x2={obj.x + w - 10} y2={cy}
-        stroke="rgba(255,255,255,0.13)" strokeWidth={1} />
+      <line x1={obj.x + 12} y1={cy} x2={obj.x + w - 12} y2={cy}
+        stroke="rgba(255,255,255,0.14)" strokeWidth={1} />
 
       {/* Pockets */}
       {pockets.map(([px, py], i) => (
-        <circle key={i} cx={px} cy={py} r={5} fill="#060606" />
+        <circle key={i} cx={px} cy={py} r={5} fill="#040404" />
       ))}
 
       {/* Balls */}
-      <circle cx={cx - 14} cy={cy - 8} r={4.5} fill="#e03030" opacity={0.88} />
+      <circle cx={cx - 14} cy={cy - 7} r={4.5} fill="#e03030" opacity={0.88} />
       <circle cx={cx}      cy={cy + 6} r={4.5} fill="#f0f0f0" opacity={0.88} />
-      <circle cx={cx + 14} cy={cy - 8} r={4.5} fill="#e8a020" opacity={0.88} />
+      <circle cx={cx + 14} cy={cy - 7} r={4.5} fill="#e8a020" opacity={0.88} />
 
       {/* Label */}
-      <text x={cx} y={obj.y - 8} textAnchor="middle"
-        fill="#3a3a3a" fontSize={7} fontFamily="'Bebas Neue', cursive"
+      <text x={cx} y={obj.y - 9} textAnchor="middle"
+        fill="#3a3a3a" fontSize={8} fontFamily="'Bebas Neue', cursive"
         style={{ pointerEvents: "none", userSelect: "none" }}>
         {obj.label}
       </text>
 
-      {/* Guest name */}
-      {obj.data_json?.guest && (
-        <>
-          <rect x={obj.x} y={obj.y + h + 5} width={w} height={13} rx={2}
-            fill={obj.status === "reserved" ? "#7a5a18" : "#156030"} opacity={0.92} />
-          <text x={cx} y={obj.y + h + 15} textAnchor="middle"
-            fill="#fff" fontSize={8} fontWeight="bold"
-            style={{ pointerEvents: "none", userSelect: "none" }}>
-            {String(obj.data_json.guest)}
-          </text>
-        </>
+      {obj.locked && (
+        <text x={cx + 16} y={obj.y + 12} fill="#c9a84c" fontSize={9}
+          style={{ pointerEvents: "none", userSelect: "none" }}>&#128274;</text>
       )}
     </g>
   )
 }
 
-// ─── Properties Panel ─────────────────────────────────────────────────────────
+// ─── Properties Panel (touch-friendly slide-up / side panel) ─────────────────
 
-function PropertiesPanel({
-  obj, onChange, onDelete, onDuplicate, onLockToggle, onClose,
-}: {
+function PropsPanel({ obj, onChange, onDelete, onDuplicate, onLockToggle, onClose }: {
   obj: FloorObject
   onChange: (id: string, patch: Partial<FloorObject>) => void
   onDelete: (id: string) => void
@@ -260,159 +337,162 @@ function PropertiesPanel({
   onLockToggle: (id: string) => void
   onClose: () => void
 }) {
-  const field = (
-    label: string,
-    value: string | number,
-    key: keyof FloorObject,
-    type: "text" | "number" | "range" = "text",
-    min?: number, max?: number
-  ) => (
+  const F = (lbl: string, val: string | number, k: keyof FloorObject, type: "text" | "number" = "text") => (
     <div className="flex flex-col gap-1">
-      <label style={{ color: "#6b6b6b", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-        {label}
-      </label>
+      <label style={{ color: "#666", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>{lbl}</label>
       <input
         type={type}
-        value={value}
-        min={min} max={max}
-        onChange={e => onChange(obj.id, {
-          [key]: type === "number" || type === "range" ? Number(e.target.value) : e.target.value
-        } as Partial<FloorObject>)}
-        className="w-full px-2.5 py-1.5 rounded-md text-sm outline-none"
+        value={val}
+        onChange={e => onChange(obj.id, { [k]: type === "number" ? Number(e.target.value) : e.target.value } as Partial<FloorObject>)}
         style={{
-          background: "#111118",
-          border: "1px solid rgba(201,168,76,0.15)",
-          color: "#f5f0e8",
-          fontFamily: "var(--font-sans)",
+          width: "100%", padding: "10px 12px", borderRadius: 8, fontSize: 14,
+          background: "#111118", border: "1px solid rgba(201,168,76,0.18)",
+          color: "#f5f0e8", outline: "none",
+          // Larger touch target
+          minHeight: 44,
         }}
       />
     </div>
   )
 
-  const selectField = (
-    label: string,
-    value: string,
-    key: keyof FloorObject,
-    options: { value: string; label: string }[]
-  ) => (
-    <div className="flex flex-col gap-1">
-      <label style={{ color: "#6b6b6b", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-        {label}
-      </label>
-      <select
-        value={value}
-        onChange={e => onChange(obj.id, { [key]: e.target.value } as Partial<FloorObject>)}
-        className="w-full px-2.5 py-1.5 rounded-md text-sm outline-none"
-        style={{
-          background: "#111118",
-          border: "1px solid rgba(201,168,76,0.15)",
-          color: "#f5f0e8",
-          fontFamily: "var(--font-sans)",
-        }}
-      >
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-    </div>
-  )
-
   return (
     <div
-      className="absolute right-0 top-0 bottom-0 flex flex-col gap-0 overflow-y-auto"
       style={{
-        width: 228,
+        position: "absolute", right: 0, top: 0, bottom: 0, width: 260,
         background: "#0e0e16",
-        borderLeft: "1px solid rgba(201,168,76,0.1)",
-        zIndex: 30,
+        borderLeft: "1px solid rgba(201,168,76,0.12)",
+        zIndex: 40, display: "flex", flexDirection: "column",
+        overflowY: "auto", overscrollBehavior: "contain",
+        WebkitOverflowScrolling: "touch",
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 flex-shrink-0"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)",
+        flexShrink: 0,
+      }}>
         <span style={{ color: "#c9a84c", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
           Eigenschaften
         </span>
-        <button onClick={onClose} className="w-6 h-6 flex items-center justify-center rounded"
-          style={{ color: "#666", background: "rgba(255,255,255,0.04)" }}>
-          <X className="w-3.5 h-3.5" />
+        <button
+          onClick={onClose}
+          style={{
+            width: 44, height: 44, display: "flex", alignItems: "center",
+            justifyContent: "center", borderRadius: 8, background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.08)", color: "#666", cursor: "pointer",
+          }}
+        >
+          <X className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="flex flex-col gap-3 p-4 flex-1">
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, flex: 1 }}>
         {/* Type badge */}
-        <div className="flex items-center gap-2">
-          <span className="px-2 py-0.5 rounded text-xs font-bold"
-            style={{ background: "rgba(201,168,76,0.1)", color: "#c9a84c" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{
+            padding: "3px 8px", borderRadius: 5, fontSize: 11, fontWeight: 700,
+            background: "rgba(201,168,76,0.1)", color: "#c9a84c",
+          }}>
             {obj.type === "billiard" ? "Billard" : "Tisch"}
           </span>
-          <span style={{ color: "#444", fontSize: 10 }}>{obj.id}</span>
         </div>
 
-        {field("Bezeichnung", obj.label, "label")}
-        {field("X Position", obj.x, "x", "number")}
-        {field("Y Position", obj.y, "y", "number")}
-        {field("Rotation", obj.rotation, "rotation", "range", 0, 359)}
-        <div style={{ color: "#555", fontSize: 10, textAlign: "center" }}>
-          {obj.rotation}°
+        {F("Bezeichnung", obj.label, "label")}
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          {F("X", obj.x, "x", "number")}
+          {F("Y", obj.y, "y", "number")}
+          {F("Breite", obj.width ?? DEFAULT_W, "width", "number")}
+          {F("Hoehe", obj.height ?? DEFAULT_H, "height", "number")}
         </div>
 
-        {obj.type !== "billiard" && field("Sitzplätze", obj.seats, "seats", "number", 1, 20)}
+        {/* Rotation */}
+        <div className="flex flex-col gap-2">
+          <label style={{ color: "#666", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Rotation: {obj.rotation}°
+          </label>
+          <input type="range" min={0} max={359} value={obj.rotation}
+            onChange={e => onChange(obj.id, { rotation: Number(e.target.value) })}
+            style={{ width: "100%", accentColor: "#c9a84c", height: 8 }} />
+        </div>
 
-        {field("Breite", obj.width ?? DEFAULT_TABLE_W, "width", "number", 20, 300)}
-        {field("Höhe", obj.height ?? DEFAULT_TABLE_H, "height", "number", 20, 300)}
+        {/* Seats */}
+        {obj.type !== "billiard" && (
+          <div className="flex flex-col gap-2">
+            <label style={{ color: "#666", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Sitzplaetze: {obj.seats}
+            </label>
+            <input type="range" min={1} max={20} value={obj.seats}
+              onChange={e => onChange(obj.id, { seats: Number(e.target.value) })}
+              style={{ width: "100%", accentColor: "#c9a84c", height: 8 }} />
+          </div>
+        )}
 
-        {selectField("Status", obj.status, "status", [
-          { value: "free",     label: "Frei" },
-          { value: "reserved", label: "Reserviert" },
-          { value: "occupied", label: "Belegt" },
-          { value: "blocked",  label: "Gesperrt" },
-        ])}
+        {/* Status */}
+        <div className="flex flex-col gap-1">
+          <label style={{ color: "#666", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Status</label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+            {(["free", "reserved", "occupied", "blocked"] as StatusType[]).map(st => (
+              <button key={st} onClick={() => onChange(obj.id, { status: st })}
+                style={{
+                  padding: "10px 8px", borderRadius: 8, fontSize: 11, fontWeight: 700,
+                  cursor: "pointer", minHeight: 44,
+                  background: obj.status === st ? STATUS_COLORS[st] : "rgba(255,255,255,0.04)",
+                  border: `1px solid ${obj.status === st ? STATUS_COLORS[st] : "rgba(255,255,255,0.08)"}`,
+                  color: obj.status === st ? (st === "free" ? "#1a1a2a" : "#fff") : "#666",
+                }}>
+                {st === "free" ? "Frei" : st === "reserved" ? "Reserviert" : st === "occupied" ? "Belegt" : "Gesperrt"}
+              </button>
+            ))}
+          </div>
+        </div>
 
-        {selectField("Bereich", obj.area_id, "area_id", AREAS.map(a => ({ value: a.id, label: a.label })))}
-
-        {/* Color preview */}
-        <div className="flex items-center gap-2 mt-1">
-          <div className="w-8 h-8 rounded-md border border-white/10"
-            style={{ background: STATUS_COLORS[obj.status] }} />
-          <span style={{ color: "#555", fontSize: 11 }}>{STATUS_COLORS[obj.status]}</span>
+        {/* Area */}
+        <div className="flex flex-col gap-1">
+          <label style={{ color: "#666", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Bereich</label>
+          <select
+            value={obj.area_id}
+            onChange={e => onChange(obj.id, { area_id: e.target.value })}
+            style={{
+              width: "100%", padding: "10px 12px", borderRadius: 8, fontSize: 13, minHeight: 44,
+              background: "#111118", border: "1px solid rgba(201,168,76,0.18)", color: "#f5f0e8",
+            }}
+          >
+            {AREAS.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
+          </select>
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col gap-2 mt-2">
-          <button
-            onClick={() => onLockToggle(obj.id)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+          <button onClick={() => onLockToggle(obj.id)}
             style={{
-              background: obj.locked ? "rgba(201,168,76,0.1)" : "rgba(255,255,255,0.04)",
+              display: "flex", alignItems: "center", gap: 8, padding: "12px 16px",
+              borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", minHeight: 48,
+              background: obj.locked ? "rgba(201,168,76,0.12)" : "rgba(255,255,255,0.04)",
+              border: `1px solid ${obj.locked ? "rgba(201,168,76,0.3)" : "rgba(255,255,255,0.08)"}`,
               color: obj.locked ? "#c9a84c" : "#888",
-              border: `1px solid ${obj.locked ? "rgba(201,168,76,0.25)" : "rgba(255,255,255,0.06)"}`,
-            }}
-          >
-            {obj.locked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-            {obj.locked ? "Gesperrt" : "Sperren"}
+            }}>
+            {obj.locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+            {obj.locked ? "Entsperren" : "Sperren"}
           </button>
 
-          <button
-            onClick={() => onDuplicate(obj.id)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+          <button onClick={() => onDuplicate(obj.id)}
             style={{
-              background: "rgba(255,255,255,0.04)",
-              color: "#888",
-              border: "1px solid rgba(255,255,255,0.06)",
-            }}
-          >
-            <Copy className="w-3.5 h-3.5" /> Duplizieren
+              display: "flex", alignItems: "center", gap: 8, padding: "12px 16px",
+              borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", minHeight: 48,
+              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#888",
+            }}>
+            <Copy className="w-4 h-4" /> Duplizieren
           </button>
 
-          <button
-            onClick={() => onDelete(obj.id)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+          <button onClick={() => onDelete(obj.id)}
             style={{
-              background: "rgba(204,34,34,0.08)",
-              color: "#cc5555",
-              border: "1px solid rgba(204,34,34,0.18)",
-            }}
-          >
-            <Trash2 className="w-3.5 h-3.5" /> Löschen
+              display: "flex", alignItems: "center", gap: 8, padding: "12px 16px",
+              borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", minHeight: 48,
+              background: "rgba(204,34,34,0.08)", border: "1px solid rgba(204,34,34,0.2)", color: "#cc5555",
+            }}>
+            <Trash2 className="w-4 h-4" /> Loeschen
           </button>
         </div>
       </div>
@@ -423,205 +503,178 @@ function PropertiesPanel({
 // ─── Toolbar ──────────────────────────────────────────────────────────────────
 
 function Toolbar({
-  tool, setTool, snap, setSnap, showGrid, setShowGrid, zoom, setZoom,
-  onAddTable, onAddBilliard, onSave, saving, hasUnsaved, onUndo, onRedo,
-  canUndo, canRedo, selectedCount, onDeleteSelected, onAlignH, onAlignV,
+  tool, setTool, snapOn, setSnapOn, showGrid, setShowGrid, zoom, setZoom,
+  onAddTable, onAddBilliard, onSave, saving, hasUnsaved,
+  onUndo, onRedo, canUndo, canRedo, selCount, onDeleteSel, onAlignH, onAlignV,
 }: {
   tool: string; setTool: (t: string) => void
-  snap: boolean; setSnap: (v: boolean) => void
+  snapOn: boolean; setSnapOn: (v: boolean) => void
   showGrid: boolean; setShowGrid: (v: boolean) => void
   zoom: number; setZoom: (v: number) => void
   onAddTable: () => void; onAddBilliard: () => void
   onSave: () => void; saving: boolean; hasUnsaved: boolean
   onUndo: () => void; onRedo: () => void; canUndo: boolean; canRedo: boolean
-  selectedCount: number; onDeleteSelected: () => void
+  selCount: number; onDeleteSel: () => void
   onAlignH: () => void; onAlignV: () => void
 }) {
-  const btn = (
-    label: string, icon: React.ReactNode, onClick: () => void,
-    active = false, color = "#888", danger = false
-  ) => (
-    <button
-      onClick={onClick}
-      title={label}
-      className="flex items-center justify-center w-8 h-8 rounded-md transition-all"
+  const Btn = ({ title, icon, onClick, active = false, danger = false }: {
+    title: string; icon: React.ReactNode; onClick: () => void; active?: boolean; danger?: boolean
+  }) => (
+    <button onClick={onClick} title={title}
       style={{
+        display: "flex", alignItems: "center", justifyContent: "center",
+        width: 44, height: 44, borderRadius: 8, cursor: "pointer",
         background: active ? "rgba(201,168,76,0.15)" : danger ? "rgba(204,34,34,0.08)" : "rgba(255,255,255,0.04)",
         border: `1px solid ${active ? "rgba(201,168,76,0.3)" : danger ? "rgba(204,34,34,0.2)" : "rgba(255,255,255,0.06)"}`,
-        color: active ? "#c9a84c" : danger ? "#cc5555" : color,
-      }}
-    >
+        color: active ? "#c9a84c" : danger ? "#cc5555" : "#777",
+        flexShrink: 0,
+      }}>
       {icon}
     </button>
   )
 
+  const Sep = () => (
+    <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.06)", flexShrink: 0, margin: "0 2px" }} />
+  )
+
   return (
-    <div
-      className="flex items-center gap-1.5 px-3 flex-shrink-0 flex-wrap"
-      style={{
-        height: 48,
-        background: "#0e0e16",
-        borderBottom: "1px solid rgba(201,168,76,0.08)",
-        gap: 6,
-      }}
-    >
+    <div style={{
+      display: "flex", alignItems: "center", gap: 4, padding: "0 12px",
+      height: 56, background: "#0e0e16",
+      borderBottom: "1px solid rgba(201,168,76,0.08)",
+      overflowX: "auto", flexShrink: 0,
+      scrollbarWidth: "none",
+      WebkitOverflowScrolling: "touch",
+    }}>
       {/* Tool mode */}
-      <div className="flex items-center gap-1 mr-1">
-        {btn("Auswahl", <MousePointer className="w-3.5 h-3.5" />, () => setTool("select"), tool === "select")}
-        {btn("Verschieben", <Move className="w-3.5 h-3.5" />, () => setTool("move"), tool === "move")}
-      </div>
+      <Btn title="Auswahl" icon={<MousePointer className="w-4 h-4" />} onClick={() => setTool("select")} active={tool === "select"} />
+      <Btn title="Verschieben" icon={<Move className="w-4 h-4" />} onClick={() => setTool("move")} active={tool === "move"} />
 
-      <div style={{ width: 1, height: 22, background: "rgba(255,255,255,0.07)" }} />
+      <Sep />
 
-      {/* Add objects */}
-      <div className="flex items-center gap-1">
-        <button
-          onClick={onAddTable}
-          className="flex items-center gap-1.5 px-2.5 h-8 rounded-md text-xs font-bold transition-all"
-          style={{
-            background: "rgba(201,168,76,0.1)",
-            border: "1px solid rgba(201,168,76,0.25)",
-            color: "#c9a84c",
-          }}
-        >
-          <Plus className="w-3.5 h-3.5" /> Tisch
-        </button>
-        <button
-          onClick={onAddBilliard}
-          className="flex items-center gap-1.5 px-2.5 h-8 rounded-md text-xs font-bold transition-all"
-          style={{
-            background: "rgba(26,107,42,0.15)",
-            border: "1px solid rgba(26,107,42,0.35)",
-            color: "#2a9d5c",
-          }}
-        >
-          <Plus className="w-3.5 h-3.5" /> Billard
-        </button>
-      </div>
+      {/* Add */}
+      <button onClick={onAddTable}
+        style={{
+          display: "flex", alignItems: "center", gap: 6,
+          padding: "0 14px", height: 44, borderRadius: 8, fontSize: 13, fontWeight: 700,
+          background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.25)",
+          color: "#c9a84c", cursor: "pointer", flexShrink: 0,
+        }}>
+        <Plus className="w-4 h-4" /> Tisch
+      </button>
+      <button onClick={onAddBilliard}
+        style={{
+          display: "flex", alignItems: "center", gap: 6,
+          padding: "0 14px", height: 44, borderRadius: 8, fontSize: 13, fontWeight: 700,
+          background: "rgba(26,107,42,0.15)", border: "1px solid rgba(26,107,42,0.35)",
+          color: "#2a9d5c", cursor: "pointer", flexShrink: 0,
+        }}>
+        <Plus className="w-4 h-4" /> Billard
+      </button>
 
-      <div style={{ width: 1, height: 22, background: "rgba(255,255,255,0.07)" }} />
+      <Sep />
 
-      {/* Undo / Redo */}
-      <div className="flex items-center gap-1">
-        {btn("Rückgängig (Ctrl+Z)", <RotateCcw className="w-3.5 h-3.5" />, onUndo, false, canUndo ? "#888" : "#333")}
-        {btn("Wiederholen (Ctrl+Y)", <RotateCcw className="w-3.5 h-3.5 scale-x-[-1]" />, onRedo, false, canRedo ? "#888" : "#333")}
-      </div>
+      {/* Undo/Redo */}
+      <Btn title="Rueckgaengig" icon={<RotateCcw className="w-4 h-4" />} onClick={onUndo} active={false} />
+      <Btn title="Wiederholen" icon={<RotateCcw className="w-4 h-4 scale-x-[-1]" />} onClick={onRedo} active={false} />
 
-      <div style={{ width: 1, height: 22, background: "rgba(255,255,255,0.07)" }} />
+      <Sep />
 
-      {/* Snap + Grid */}
-      {btn("Am Raster ausrichten", <Grid className="w-3.5 h-3.5" />, () => setSnap(!snap), snap)}
-      {btn("Raster anzeigen", <Layers className="w-3.5 h-3.5" />, () => setShowGrid(!showGrid), showGrid)}
+      {/* Grid / Snap */}
+      <Btn title="Raster" icon={<Grid className="w-4 h-4" />} onClick={() => setShowGrid(!showGrid)} active={showGrid} />
+      <Btn title="Einrasten" icon={<Layers className="w-4 h-4" />} onClick={() => setSnapOn(!snapOn)} active={snapOn} />
 
-      <div style={{ width: 1, height: 22, background: "rgba(255,255,255,0.07)" }} />
-
-      {/* Alignment (only when multi-select) */}
-      {selectedCount > 1 && (
+      {/* Align (multi-select only) */}
+      {selCount > 1 && (
         <>
-          {btn("Horizontal ausrichten", <AlignLeft className="w-3.5 h-3.5" />, onAlignH)}
-          {btn("Vertikal ausrichten", <AlignCenter className="w-3.5 h-3.5 rotate-90" />, onAlignV)}
-          <div style={{ width: 1, height: 22, background: "rgba(255,255,255,0.07)" }} />
+          <Sep />
+          <Btn title="Horizontal ausrichten" icon={<AlignLeft className="w-4 h-4" />} onClick={onAlignH} />
+          <Btn title="Vertikal ausrichten" icon={<AlignCenter className="w-4 h-4 rotate-90" />} onClick={onAlignV} />
         </>
       )}
 
       {/* Delete selected */}
-      {selectedCount > 0 && btn(
-        `${selectedCount} löschen`, <Trash2 className="w-3.5 h-3.5" />, onDeleteSelected, false, "#cc5555", true
+      {selCount > 0 && (
+        <>
+          <Sep />
+          <Btn title={`${selCount} loeschen`} icon={<Trash2 className="w-4 h-4" />} onClick={onDeleteSel} danger />
+        </>
       )}
 
       {/* Zoom */}
-      <div className="flex items-center gap-1 ml-auto">
-        {btn("Verkleinern", <ZoomOut className="w-3.5 h-3.5" />, () => setZoom(Math.max(0.25, zoom - 0.1)))}
-        <span style={{ color: "#555", fontSize: 10, width: 36, textAlign: "center" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto", flexShrink: 0 }}>
+        <Btn title="Verkleinern" icon={<ZoomOut className="w-4 h-4" />} onClick={() => setZoom(Math.max(0.25, zoom - 0.1))} />
+        <span style={{ color: "#555", fontSize: 11, width: 40, textAlign: "center", flexShrink: 0 }}>
           {Math.round(zoom * 100)}%
         </span>
-        {btn("Vergrößern", <ZoomIn className="w-3.5 h-3.5" />, () => setZoom(Math.min(3, zoom + 0.1)))}
-        {btn("Zurücksetzen", <Maximize2 className="w-3.5 h-3.5" />, () => setZoom(1))}
+        <Btn title="Vergroessern" icon={<ZoomIn className="w-4 h-4" />} onClick={() => setZoom(Math.min(3, zoom + 0.1))} />
+        <Btn title="Zuruecksetzen" icon={<Maximize2 className="w-4 h-4" />} onClick={() => setZoom(1)} />
       </div>
 
       {/* Save */}
-      <button
-        onClick={onSave}
-        disabled={saving}
-        className="flex items-center gap-1.5 px-3 h-8 rounded-md text-xs font-bold ml-1 transition-all"
+      <button onClick={onSave} disabled={saving}
         style={{
+          display: "flex", alignItems: "center", gap: 6, padding: "0 16px",
+          height: 44, borderRadius: 8, fontSize: 13, fontWeight: 700,
           background: hasUnsaved ? "#c9a84c" : "rgba(201,168,76,0.1)",
           border: "1px solid rgba(201,168,76,0.3)",
           color: hasUnsaved ? "#0a0a0a" : "#c9a84c",
-          opacity: saving ? 0.6 : 1,
-        }}
-      >
-        {saving ? (
-          <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />
-        ) : (
-          <Save className="w-3.5 h-3.5" />
-        )}
+          cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1, flexShrink: 0,
+        }}>
+        {saving
+          ? <span style={{ width: 16, height: 16, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%", display: "inline-block", animation: "spin 0.6s linear infinite" }} />
+          : <Save className="w-4 h-4" />
+        }
         {saving ? "Speichert..." : "Speichern"}
-        {hasUnsaved && !saving && <span className="w-1.5 h-1.5 rounded-full bg-red-400 ml-0.5" />}
       </button>
     </div>
   )
 }
 
-// ─── Area Selector (left panel) ───────────────────────────────────────────────
+// ─── Area Selector ────────────────────────────────────────────────────────────
 
-function AreaPanel({
-  activeArea, onChange,
-}: {
-  activeArea: string; onChange: (id: string) => void
-}) {
+function AreaSelector({ active, onChange }: { active: string; onChange: (id: string) => void }) {
   return (
-    <div
-      className="flex flex-col flex-shrink-0"
-      style={{
-        width: 186,
-        background: "#0c0c14",
-        borderRight: "1px solid rgba(201,168,76,0.08)",
-      }}
-    >
-      <div className="px-3 py-2.5 flex-shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-        <span style={{ color: "#c9a84c", fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+    <div style={{
+      width: 200, background: "#0c0c14",
+      borderRight: "1px solid rgba(201,168,76,0.08)",
+      display: "flex", flexDirection: "column",
+      overflowY: "auto", overscrollBehavior: "contain",
+      WebkitOverflowScrolling: "touch",
+    }}>
+      <div style={{ padding: "12px 14px 8px", flexShrink: 0 }}>
+        <span style={{ color: "#c9a84c", fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" }}>
           Bereiche
         </span>
       </div>
-      <div className="flex flex-col flex-1 py-1">
-        {AREAS.map((a, i) => {
-          const active = activeArea === a.id
-          return (
-            <button
-              key={a.id}
-              onClick={() => onChange(a.id)}
-              className="flex flex-col px-3 py-2.5 text-left transition-all"
-              style={{
-                background: active ? "rgba(201,168,76,0.08)" : "transparent",
-                borderLeft: `2.5px solid ${active ? "#c9a84c" : "transparent"}`,
-              }}
-            >
-              <span style={{ color: "#333", fontSize: 8 }}>{i + 1}.</span>
-              <span style={{
-                color: active ? "#c9a84c" : "#777",
-                fontSize: 11,
-                fontWeight: 600,
-                lineHeight: 1.3,
-              }}>
-                {a.label}
-              </span>
-            </button>
-          )
-        })}
-      </div>
+      {AREAS.map(a => {
+        const isActive = active === a.id
+        return (
+          <button key={a.id} onClick={() => onChange(a.id)}
+            style={{
+              display: "flex", flexDirection: "column", padding: "14px 14px",
+              borderLeft: `3px solid ${isActive ? "#c9a84c" : "transparent"}`,
+              background: isActive ? "rgba(201,168,76,0.07)" : "transparent",
+              cursor: "pointer", textAlign: "left", minHeight: 54, border: "none",
+              borderLeft: `3px solid ${isActive ? "#c9a84c" : "transparent"}`,
+            }}>
+            <span style={{ color: "#444", fontSize: 9 }}>{a.num}</span>
+            <span style={{ color: isActive ? "#c9a84c" : "#777", fontSize: 12, fontWeight: 600, lineHeight: 1.3 }}>
+              {a.label}
+            </span>
+          </button>
+        )
+      })}
 
-      {/* Object palette */}
-      <div className="px-3 pb-3 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-        <span style={{ color: "#444", fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-          Status
-        </span>
-        <div className="flex flex-col gap-1.5 mt-2">
-          {(Object.entries(STATUS_COLORS) as [StatusType, string][]).map(([s, c]) => (
-            <div key={s} className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ background: c }} />
+      {/* Legend */}
+      <div style={{ marginTop: "auto", padding: "12px 14px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <span style={{ color: "#444", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em" }}>Status</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+          {(Object.entries(STATUS_COLORS) as [StatusType, string][]).map(([st, c]) => (
+            <div key={st} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 12, height: 12, borderRadius: 3, background: c, flexShrink: 0 }} />
               <span style={{ color: "#555", fontSize: 10 }}>
-                {s === "free" ? "Frei" : s === "reserved" ? "Reserviert" : s === "occupied" ? "Belegt" : "Gesperrt"}
+                {st === "free" ? "Frei" : st === "reserved" ? "Reserviert" : st === "occupied" ? "Belegt" : "Gesperrt"}
               </span>
             </div>
           ))}
@@ -637,21 +690,17 @@ interface Toast { id: string; type: "success" | "error" | "info"; text: string }
 
 function ToastStack({ toasts }: { toasts: Toast[] }) {
   return (
-    <div className="fixed bottom-4 right-4 flex flex-col gap-2" style={{ zIndex: 9999 }}>
+    <div style={{ position: "fixed", bottom: 24, right: 24, display: "flex", flexDirection: "column", gap: 8, zIndex: 9999 }}>
       {toasts.map(t => (
-        <div
-          key={t.id}
-          className="px-4 py-2.5 rounded-lg text-sm font-medium"
-          style={{
-            background: "#0e0e16",
-            borderLeft: `3px solid ${t.type === "success" ? "#1db954" : t.type === "error" ? "#cc2222" : "#c9a84c"}`,
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderLeftWidth: 3,
-            color: "#f5f0e8",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
-            animation: "fadeSlideIn 0.2s ease",
-          }}
-        >
+        <div key={t.id} style={{
+          padding: "12px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600,
+          background: "#0e0e16",
+          borderLeft: `3px solid ${t.type === "success" ? "#1db954" : t.type === "error" ? "#cc2222" : "#c9a84c"}`,
+          border: "1px solid rgba(255,255,255,0.07)",
+          borderLeftWidth: 3,
+          color: "#f5f0e8",
+          boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
+        }}>
           {t.text}
         </div>
       ))}
@@ -659,38 +708,37 @@ function ToastStack({ toasts }: { toasts: Toast[] }) {
   )
 }
 
-// ─── Main Editor ──────────────────────────────────────────────────────────────
+// ─── Core Editor (shared between standalone page and embedded modal) ───────────
 
-export default function FloorPlanEditor() {
-  const supabase = createClient()
-  const canvasRef = useRef<SVGSVGElement>(null)
+export function EmbeddedEditor({ initialArea = "restaurant140" }: { initialArea?: string }) {
+  const supabase   = createClient()
+  const canvasRef  = useRef<SVGSVGElement>(null)
 
-  // State
-  const [objects, setObjects] = useState<FloorObject[]>([])
-  const [history, setHistory] = useState<FloorObject[][]>([])
-  const [future, setFuture] = useState<FloorObject[][]>([])
+  const [objects,     setObjects]     = useState<FloorObject[]>([])
+  const [history,     setHistory]     = useState<FloorObject[][]>([])
+  const [future,      setFuture]      = useState<FloorObject[][]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [activeArea, setActiveArea] = useState("restaurant140")
-  const [tool, setTool] = useState("select")
-  const [snap, setSnap] = useState(true)
-  const [showGrid, setShowGrid] = useState(true)
-  const [zoom, setZoom] = useState(1)
-  const [pan, setPan] = useState({ x: 0, y: 0 })
-  const [saving, setSaving] = useState(false)
-  const [hasUnsaved, setHasUnsaved] = useState(false)
-  const [toasts, setToasts] = useState<Toast[]>([])
-  const [loading, setLoading] = useState(true)
+  const [activeArea,  setActiveArea]  = useState(initialArea)
+  const [tool,        setTool]        = useState("select")
+  const [snapOn,      setSnapOn]      = useState(true)
+  const [showGrid,    setShowGrid]    = useState(true)
+  const [zoom,        setZoom]        = useState(1)
+  const [pan,         setPan]         = useState({ x: 20, y: 20 })
+  const [saving,      setSaving]      = useState(false)
+  const [hasUnsaved,  setHasUnsaved]  = useState(false)
+  const [toasts,      setToasts]      = useState<Toast[]>([])
+  const [loading,     setLoading]     = useState(true)
 
-  // Drag state
-  const dragRef = useRef<{
-    id: string; startX: number; startY: number; origX: number; origY: number
-  } | null>(null)
-  const panRef = useRef<{ startX: number; startY: number; origPanX: number; origPanY: number } | null>(null)
+  // Drag / pan refs
+  const dragRef = useRef<{ id: string; startX: number; startY: number; origPositions: Record<string, { x: number; y: number }> } | null>(null)
+  const panRef  = useRef<{ startX: number; startY: number; origPan: { x: number; y: number } } | null>(null)
+  // Pinch-to-zoom
+  const pinchRef = useRef<{ dist: number; origZoom: number } | null>(null)
 
-  const visibleObjects = objects.filter(o => o.area_id === activeArea)
+  const visible = objects.filter(o => o.area_id === activeArea)
 
-  // ── Toast helpers ──
-  const addToast = useCallback((type: Toast["type"], text: string) => {
+  // ── Toast ──
+  const toast = useCallback((type: Toast["type"], text: string) => {
     const id = Date.now().toString()
     setToasts(p => [...p.slice(-2), { id, type, text }])
     setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3000)
@@ -724,14 +772,22 @@ export default function FloorPlanEditor() {
     })
   }, [objects])
 
-  // ── Load ──
+  // ── Load from Supabase, fall back to default layouts ──
   useEffect(() => {
     async function load() {
       setLoading(true)
       const { data, error } = await supabase.from("floor_objects").select("*")
-      if (error) { addToast("error", "Fehler beim Laden"); }
-      else {
-        const mapped = (data ?? []).map((r: Record<string, unknown>) => ({
+      if (error) {
+        toast("error", "Daten konnten nicht geladen werden – Standardlayout wird verwendet")
+        // Seed all default layouts
+        const allDefaults = Object.values(DEFAULT_LAYOUTS).flat()
+        setObjects(allDefaults)
+      } else if (!data || data.length === 0) {
+        // Nothing in DB yet – use defaults
+        const allDefaults = Object.values(DEFAULT_LAYOUTS).flat()
+        setObjects(allDefaults)
+      } else {
+        const mapped = (data as Record<string, unknown>[]).map(r => ({
           id:        r.id as string,
           type:      r.type as ObjType,
           x:         Number(r.x),
@@ -742,8 +798,8 @@ export default function FloorPlanEditor() {
           label:     r.label as string,
           area_id:   r.area_id as string,
           data_json: (r.data_json as Record<string, unknown>) ?? {},
-          width:     r.type === "billiard" ? BILLIARD_W : DEFAULT_TABLE_W,
-          height:    r.type === "billiard" ? BILLIARD_H : DEFAULT_TABLE_H,
+          width:     r.type === "billiard" ? BILLIARD_W : (r.width ? Number(r.width) : DEFAULT_W),
+          height:    r.type === "billiard" ? BILLIARD_H : (r.height ? Number(r.height) : DEFAULT_H),
           locked:    false,
         }))
         setObjects(mapped)
@@ -757,27 +813,27 @@ export default function FloorPlanEditor() {
   // ── Keyboard shortcuts ──
   useEffect(() => {
     const handle = (e: KeyboardEvent) => {
-      if (e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); undo() }
+      if ((e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey)) { e.preventDefault(); undo() }
       if ((e.key === "y" && (e.ctrlKey || e.metaKey)) || (e.key === "z" && e.ctrlKey && e.shiftKey)) { e.preventDefault(); redo() }
       if ((e.key === "Delete" || e.key === "Backspace") && selectedIds.size > 0) deleteSelected()
       if (e.key === "Escape") setSelectedIds(new Set())
-      if (e.key === "a" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); setSelectedIds(new Set(visibleObjects.map(o => o.id))) }
+      if (e.key === "a" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); setSelectedIds(new Set(visible.map(o => o.id))) }
     }
     window.addEventListener("keydown", handle)
     return () => window.removeEventListener("keydown", handle)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [undo, redo, selectedIds, visibleObjects])
+  }, [undo, redo, selectedIds, visible])
 
   // ── Save ──
   const save = async () => {
     setSaving(true)
-    const toSave = objects.map(({ locked, width, height, ...rest }) => ({
+    const payload = objects.map(({ locked, width, height, ...rest }) => ({
       ...rest,
       updated_at: new Date().toISOString(),
     }))
-    const { error } = await supabase.from("floor_objects").upsert(toSave, { onConflict: "id" })
-    if (error) addToast("error", "Fehler beim Speichern")
-    else { addToast("success", "Grundriss gespeichert"); setHasUnsaved(false) }
+    const { error } = await supabase.from("floor_objects").upsert(payload, { onConflict: "id" })
+    if (error) toast("error", "Fehler beim Speichern")
+    else { toast("success", "Grundriss gespeichert"); setHasUnsaved(false) }
     setSaving(false)
   }
 
@@ -791,70 +847,78 @@ export default function FloorPlanEditor() {
     })
   }
 
-  const updateObj = (id: string, patch: Partial<FloorObject>) => {
+  const updateObj = (id: string, patch: Partial<FloorObject>) =>
     mutate(prev => prev.map(o => o.id === id ? { ...o, ...patch } : o))
-  }
 
   const deleteSelected = () => {
-    if (selectedIds.size === 0) return
+    if (!selectedIds.size) return
     mutate(prev => prev.filter(o => !selectedIds.has(o.id)))
     setSelectedIds(new Set())
-    addToast("info", `${selectedIds.size} Objekt(e) gelöscht`)
+    toast("info", `${selectedIds.size} Objekt(e) geloescht`)
   }
 
   const deleteObj = (id: string) => {
     mutate(prev => prev.filter(o => o.id !== id))
-    setSelectedIds(p => { p.delete(id); return new Set(p) })
+    setSelectedIds(p => { const n = new Set(p); n.delete(id); return n })
   }
 
   const duplicateObj = (id: string) => {
     const obj = objects.find(o => o.id === id)
     if (!obj) return
-    const clone: FloorObject = { ...obj, id: newId(), x: obj.x + 20, y: obj.y + 20 }
+    const clone: FloorObject = { ...obj, id: uid(), x: obj.x + 20, y: obj.y + 20 }
     mutate(prev => [...prev, clone])
     setSelectedIds(new Set([clone.id]))
-    addToast("info", "Dupliziert")
+    toast("info", "Dupliziert")
   }
 
   const addTable = () => {
-    const id = newId()
-    const obj: FloorObject = {
-      id, type: "table", x: snapToGrid(100 + Math.random() * 200, snap), y: snapToGrid(100 + Math.random() * 150, snap),
+    const id = uid()
+    mutate(prev => [...prev, {
+      id, type: "table", x: snap(100 + Math.random() * 200, snapOn), y: snap(80 + Math.random() * 150, snapOn),
       rotation: 0, seats: 4, status: "free", label: String(Math.floor(Math.random() * 90 + 10)),
-      area_id: activeArea, data_json: {}, width: DEFAULT_TABLE_W, height: DEFAULT_TABLE_H, locked: false,
-    }
-    mutate(prev => [...prev, obj])
+      area_id: activeArea, data_json: {}, width: DEFAULT_W, height: DEFAULT_H, locked: false,
+    }])
     setSelectedIds(new Set([id]))
-    addToast("info", "Tisch hinzugefügt")
+    toast("info", "Tisch hinzugefuegt")
   }
 
   const addBilliard = () => {
-    const id = newId()
-    const obj: FloorObject = {
-      id, type: "billiard", x: snapToGrid(80 + Math.random() * 200, snap), y: snapToGrid(50 + Math.random() * 100, snap),
-      rotation: 0, seats: 0, status: "free", label: `Billard ${objects.filter(o => o.type === "billiard").length + 1}`,
+    const id = uid()
+    mutate(prev => [...prev, {
+      id, type: "billiard", x: snap(80 + Math.random() * 200, snapOn), y: snap(50 + Math.random() * 100, snapOn),
+      rotation: 0, seats: 0, status: "free",
+      label: `Billard ${objects.filter(o => o.type === "billiard").length + 1}`,
       area_id: activeArea, data_json: {}, width: BILLIARD_W, height: BILLIARD_H, locked: false,
-    }
-    mutate(prev => [...prev, obj])
+    }])
     setSelectedIds(new Set([id]))
-    addToast("info", "Billardtisch hinzugefügt")
+    toast("info", "Billardtisch hinzugefuegt")
   }
 
   const alignH = () => {
     if (selectedIds.size < 2) return
     const sel = objects.filter(o => selectedIds.has(o.id))
     const avgY = sel.reduce((s, o) => s + o.y, 0) / sel.length
-    mutate(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, y: snapToGrid(avgY, snap) } : o))
+    mutate(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, y: snap(avgY, snapOn) } : o))
   }
 
   const alignV = () => {
     if (selectedIds.size < 2) return
     const sel = objects.filter(o => selectedIds.has(o.id))
     const avgX = sel.reduce((s, o) => s + o.x, 0) / sel.length
-    mutate(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, x: snapToGrid(avgX, snap) } : o))
+    mutate(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, x: snap(avgX, snapOn) } : o))
   }
 
-  // ── Drag / pointer handlers ──
+  // ── getSVGPoint: converts clientX/Y to SVG canvas coords (accounts for pan+zoom) ──
+  const svgPoint = useCallback((clientX: number, clientY: number) => {
+    const rect = canvasRef.current?.getBoundingClientRect()
+    if (!rect) return { x: 0, y: 0 }
+    return {
+      x: (clientX - rect.left - pan.x) / zoom,
+      y: (clientY - rect.top  - pan.y) / zoom,
+    }
+  }, [pan, zoom])
+
+  // ── Pointer / Touch handlers ──
   const handlePointerDown = (e: React.PointerEvent, id: string) => {
     e.stopPropagation()
     const obj = objects.find(o => o.id === id)
@@ -862,250 +926,240 @@ export default function FloorPlanEditor() {
 
     if (e.shiftKey) {
       setSelectedIds(prev => {
-        const next = new Set(prev)
-        next.has(id) ? next.delete(id) : next.add(id)
-        return next
+        const n = new Set(prev)
+        n.has(id) ? n.delete(id) : n.add(id)
+        return n
       })
     } else {
       if (!selectedIds.has(id)) setSelectedIds(new Set([id]))
     }
 
-    const svgRect = canvasRef.current!.getBoundingClientRect()
-    dragRef.current = {
-      id,
-      startX: (e.clientX - svgRect.left) / zoom,
-      startY: (e.clientY - svgRect.top) / zoom,
-      origX: obj.x,
-      origY: obj.y,
-    }
+    const pt = svgPoint(e.clientX, e.clientY)
+    const selObjs = selectedIds.has(id)
+      ? objects.filter(o => selectedIds.has(o.id) || o.id === id)
+      : objects.filter(o => o.id === id)
+
+    const origPositions: Record<string, { x: number; y: number }> = {}
+    selObjs.forEach(o => { origPositions[o.id] = { x: o.x, y: o.y } })
+
+    dragRef.current = { id, startX: pt.x, startY: pt.y, origPositions }
     ;(e.target as Element).setPointerCapture(e.pointerId)
   }
 
   const handlePointerMove = (e: React.PointerEvent) => {
+    // Pan mode
     if (panRef.current) {
       const dx = e.clientX - panRef.current.startX
       const dy = e.clientY - panRef.current.startY
-      setPan({ x: panRef.current.origPanX + dx, y: panRef.current.origPanY + dy })
+      setPan({ x: panRef.current.origPan.x + dx, y: panRef.current.origPan.y + dy })
       return
     }
     if (!dragRef.current) return
-    const svgRect = canvasRef.current!.getBoundingClientRect()
-    const curX = (e.clientX - svgRect.left) / zoom
-    const curY = (e.clientY - svgRect.top) / zoom
-    const dx = curX - dragRef.current.startX
-    const dy = curY - dragRef.current.startY
 
-    const newX = snapToGrid(dragRef.current.origX + dx, snap)
-    const newY = snapToGrid(dragRef.current.origY + dy, snap)
+    const pt = svgPoint(e.clientX, e.clientY)
+    const dx = pt.x - dragRef.current.startX
+    const dy = pt.y - dragRef.current.startY
 
-    // Move all selected objects together
-    const refObj = objects.find(o => o.id === dragRef.current!.id)
-    if (!refObj) return
-    const deltaX = newX - refObj.x
-    const deltaY = newY - refObj.y
-
-    setObjects(prev => prev.map(o =>
-      selectedIds.has(o.id) && !o.locked
-        ? { ...o, x: snapToGrid(o.x + deltaX, snap), y: snapToGrid(o.y + deltaY, snap) }
-        : o
-    ))
+    setObjects(prev => prev.map(o => {
+      const orig = dragRef.current!.origPositions[o.id]
+      if (!orig || o.locked) return o
+      return { ...o, x: snap(orig.x + dx, snapOn), y: snap(orig.y + dy, snapOn) }
+    }))
     setHasUnsaved(true)
   }
 
   const handlePointerUp = () => {
-    if (dragRef.current) {
-      dragRef.current = null
-    }
-    if (panRef.current) {
-      panRef.current = null
-    }
+    if (dragRef.current) { dragRef.current = null }
+    if (panRef.current)  { panRef.current  = null }
   }
 
   const handleCanvasPointerDown = (e: React.PointerEvent) => {
-    // Middle mouse or space+drag for pan
     if (e.button === 1 || tool === "move") {
-      panRef.current = { startX: e.clientX, startY: e.clientY, origPanX: pan.x, origPanY: pan.y }
+      panRef.current = { startX: e.clientX, startY: e.clientY, origPan: { ...pan } }
       ;(e.target as Element).setPointerCapture(e.pointerId)
       return
     }
-    // Click on empty canvas = deselect
     setSelectedIds(new Set())
+  }
+
+  // Pinch-to-zoom on touch
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX
+      const dy = e.touches[0].clientY - e.touches[1].clientY
+      pinchRef.current = { dist: Math.hypot(dx, dy), origZoom: zoom }
+    }
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && pinchRef.current) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX
+      const dy = e.touches[0].clientY - e.touches[1].clientY
+      const dist = Math.hypot(dx, dy)
+      const ratio = dist / pinchRef.current.dist
+      setZoom(Math.max(0.25, Math.min(3, pinchRef.current.origZoom * ratio)))
+    }
+  }
+
+  const handleTouchEnd = () => {
+    pinchRef.current = null
   }
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault()
-    const delta = e.deltaY > 0 ? -0.08 : 0.08
-    setZoom(z => Math.max(0.25, Math.min(3, z + delta)))
+    setZoom(z => Math.max(0.25, Math.min(3, z + (e.deltaY > 0 ? -0.08 : 0.08))))
   }
 
-  // ── Grid pattern ──
-  const gridPattern = showGrid ? (
+  // ── Grid ──
+  const gridEl = showGrid ? (
     <defs>
-      <pattern id="grid" width={GRID_SIZE * zoom} height={GRID_SIZE * zoom} patternUnits="userSpaceOnUse"
-        x={pan.x % (GRID_SIZE * zoom)} y={pan.y % (GRID_SIZE * zoom)}>
-        <path d={`M ${GRID_SIZE * zoom} 0 L 0 0 0 ${GRID_SIZE * zoom}`}
+      <pattern id="edGrid" width={GRID_SZ * zoom} height={GRID_SZ * zoom} patternUnits="userSpaceOnUse"
+        x={pan.x % (GRID_SZ * zoom)} y={pan.y % (GRID_SZ * zoom)}>
+        <path d={`M ${GRID_SZ * zoom} 0 L 0 0 0 ${GRID_SZ * zoom}`}
           fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={0.5} />
       </pattern>
     </defs>
   ) : null
 
-  const selectedObj = selectedIds.size === 1
-    ? objects.find(o => o.id === [...selectedIds][0])
-    : undefined
+  const selectedObj = selectedIds.size === 1 ? objects.find(o => o.id === [...selectedIds][0]) : undefined
 
   return (
-    <div className="flex flex-col" style={{ height: "100vh", background: "#0a0a10", overflow: "hidden" }}>
-      {/* Top bar */}
-      <div className="flex items-center gap-3 px-4 flex-shrink-0"
-        style={{
-          height: 44,
-          background: "#0c0c14",
-          borderBottom: "1px solid rgba(201,168,76,0.1)",
-        }}
-      >
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded flex items-center justify-center text-xs font-black"
-            style={{ background: "#c9a84c", color: "#0a0a0a", fontFamily: "'Bebas Neue', cursive", fontSize: 14 }}>
-            R
-          </div>
-          <span style={{ color: "#c9a84c", fontFamily: "'Bebas Neue', cursive", fontSize: 16, letterSpacing: "0.1em" }}>
-            RONDO
-          </span>
-          <span style={{ color: "#333", fontSize: 10, marginLeft: 4 }}>/ Grundriss Editor</span>
-        </div>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#0a0a10", overflow: "hidden" }}>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .editor-scroll::-webkit-scrollbar { display: none; }
+      `}</style>
 
-        <div style={{ flex: 1 }} />
-
-        {hasUnsaved && (
-          <span className="text-xs px-2 py-0.5 rounded"
-            style={{ background: "rgba(204,34,34,0.1)", color: "#cc5555", border: "1px solid rgba(204,34,34,0.2)" }}>
-            Ungespeicherte Änderungen
-          </span>
-        )}
-        <span style={{ color: "#444", fontSize: 10 }}>
-          {visibleObjects.length} Objekte
-        </span>
-        <a href="/raumplan" className="text-xs px-2.5 py-1 rounded transition-colors"
-          style={{ color: "#666", border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.03)" }}>
-          Zur Ansicht
-        </a>
-      </div>
-
-      {/* Toolbar */}
       <Toolbar
         tool={tool} setTool={setTool}
-        snap={snap} setSnap={setSnap}
+        snapOn={snapOn} setSnapOn={setSnapOn}
         showGrid={showGrid} setShowGrid={setShowGrid}
         zoom={zoom} setZoom={setZoom}
         onAddTable={addTable} onAddBilliard={addBilliard}
         onSave={save} saving={saving} hasUnsaved={hasUnsaved}
         onUndo={undo} onRedo={redo}
         canUndo={history.length > 0} canRedo={future.length > 0}
-        selectedCount={selectedIds.size} onDeleteSelected={deleteSelected}
+        selCount={selectedIds.size} onDeleteSel={deleteSelected}
         onAlignH={alignH} onAlignV={alignV}
       />
 
-      {/* Body */}
-      <div className="flex flex-1 overflow-hidden relative">
-        {/* Left area panel */}
-        <AreaPanel activeArea={activeArea} onChange={a => { setActiveArea(a); setSelectedIds(new Set()) }} />
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative" }}>
+        {/* Left area selector */}
+        <AreaSelector active={activeArea} onChange={a => { setActiveArea(a); setSelectedIds(new Set()) }} />
 
         {/* Canvas */}
-        <div className="relative flex-1 overflow-hidden">
+        <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+          {/* Object count */}
+          <div style={{
+            position: "absolute", top: 12, left: 12, zIndex: 10,
+            background: "rgba(0,0,0,0.5)", padding: "4px 10px", borderRadius: 6,
+            color: "#555", fontSize: 11, pointerEvents: "none",
+          }}>
+            {visible.length} Objekte — {AREAS.find(a => a.id === activeArea)?.label}
+          </div>
+
           {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-8 h-8 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
-                <span style={{ color: "#555", fontSize: 12 }}>Lade Grundriss...</span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 36, height: 36, border: "3px solid #c9a84c", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                <span style={{ color: "#555", fontSize: 13 }}>Lade Grundriss...</span>
               </div>
             </div>
           ) : (
             <svg
               ref={canvasRef}
-              className="w-full h-full"
               style={{
+                width: "100%", height: "100%",
                 background: "#141420",
                 cursor: tool === "move" ? "grab" : "default",
+                touchAction: "none",  // Critical for iPad pointer events
+                display: "block",
               }}
               onPointerDown={handleCanvasPointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
               onWheel={handleWheel}
             >
-              {gridPattern}
-              {showGrid && <rect width="100%" height="100%" fill="url(#grid)" />}
+              {gridEl}
+              {showGrid && <rect width="100%" height="100%" fill="url(#edGrid)" />}
 
+              {/* Transform group: pan + zoom */}
               <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-                {/* Ambient glow */}
-                <radialGradient id="editorGlow" cx="50%" cy="45%" r="40%">
-                  <stop offset="0%" stopColor="rgba(255,140,30,0.06)" />
-                  <stop offset="100%" stopColor="transparent" />
-                </radialGradient>
-                <rect width={860} height={560} fill="url(#editorGlow)" rx={4} />
-
-                {/* Objects */}
-                {visibleObjects.map(obj => {
-                  const selected = selectedIds.has(obj.id)
-                  if (obj.type === "billiard") {
-                    return (
-                      <BilliardShape
-                        key={obj.id} obj={obj} selected={selected}
-                        onPointerDown={handlePointerDown}
-                        onDoubleClick={id => setSelectedIds(new Set([id]))}
-                      />
-                    )
-                  }
-                  return (
-                    <TableShape
-                      key={obj.id} obj={obj} selected={selected}
+                {visible.map(obj =>
+                  obj.type === "billiard" ? (
+                    <BilliardShape
+                      key={obj.id}
+                      obj={obj}
+                      selected={selectedIds.has(obj.id)}
                       onPointerDown={handlePointerDown}
-                      onDoubleClick={id => setSelectedIds(new Set([id]))}
+                      onDoubleTap={id => setSelectedIds(new Set([id]))}
+                    />
+                  ) : (
+                    <TableShape
+                      key={obj.id}
+                      obj={obj}
+                      selected={selectedIds.has(obj.id)}
+                      onPointerDown={handlePointerDown}
+                      onDoubleTap={id => setSelectedIds(new Set([id]))}
                     />
                   )
-                })}
-
-                {/* Empty state */}
-                {visibleObjects.length === 0 && (
-                  <text x={430} y={280} textAnchor="middle"
-                    fill="#2a2a3a" fontSize={13}
-                    fontFamily="var(--font-sans)">
-                    Klicke auf &quot;+ Tisch&quot; um Objekte hinzuzufügen
-                  </text>
                 )}
               </g>
             </svg>
           )}
 
-          {/* Zoom indicator */}
-          <div className="absolute bottom-3 left-3 px-2 py-1 rounded text-xs"
-            style={{ background: "rgba(0,0,0,0.6)", color: "#555", border: "1px solid rgba(255,255,255,0.06)" }}>
-            {Math.round(zoom * 100)}% · {visibleObjects.length} Objekte
-          </div>
-        </div>
-
-        {/* Properties panel */}
-        {selectedObj && (
-          <div className="relative flex-shrink-0" style={{ width: 228 }}>
-            <PropertiesPanel
+          {/* Properties panel */}
+          {selectedObj && (
+            <PropsPanel
               obj={selectedObj}
               onChange={updateObj}
               onDelete={deleteObj}
               onDuplicate={duplicateObj}
-              onLockToggle={id => updateObj(id, { locked: !selectedObj.locked })}
+              onLockToggle={id => updateObj(id, { locked: !objects.find(o => o.id === id)?.locked })}
               onClose={() => setSelectedIds(new Set())}
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <ToastStack toasts={toasts} />
+    </div>
+  )
+}
 
-      <style>{`
-        @keyframes fadeSlideIn {
-          from { opacity: 0; transform: translateY(8px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+// ─── Standalone Page ──────────────────────────────────────────────────────────
+
+export default function FloorPlanEditorPage() {
+  return (
+    <div style={{ height: "100vh", overflow: "hidden" }}>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10, padding: "0 16px",
+        height: 48, background: "#0c0c14",
+        borderBottom: "1px solid rgba(201,168,76,0.1)",
+      }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: 6, background: "#c9a84c",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontWeight: 900, color: "#0a0a0a", fontSize: 15, fontFamily: "'Bebas Neue', cursive",
+        }}>R</div>
+        <span style={{ color: "#c9a84c", fontFamily: "'Bebas Neue', cursive", fontSize: 17, letterSpacing: "0.1em" }}>RONDO</span>
+        <span style={{ color: "#444", fontSize: 11 }}>/ Grundriss Editor</span>
+        <div style={{ flex: 1 }} />
+        <a href="/raumplan" style={{
+          fontSize: 12, padding: "7px 14px", borderRadius: 7,
+          border: "1px solid rgba(255,255,255,0.08)", color: "#666",
+          background: "rgba(255,255,255,0.03)", textDecoration: "none",
+        }}>
+          Zur Ansicht
+        </a>
+      </div>
+      <div style={{ height: "calc(100vh - 48px)" }}>
+        <EmbeddedEditor />
+      </div>
     </div>
   )
 }

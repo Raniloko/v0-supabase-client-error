@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useRef, useState } from "react"
+import { EmbeddedEditor } from "./editor/page"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -149,7 +150,11 @@ function Topbar({ currentTime }: { currentTime: string }) {
 
 // ─── Area Tabs Bar ─────────────────────────────────────────────────────────────
 
-function AreaTabsBar({ activeArea, setActiveArea }: { activeArea: string; setActiveArea: (id: string) => void }) {
+function AreaTabsBar({ activeArea, setActiveArea, onEditClick }: {
+  activeArea: string
+  setActiveArea: (id: string) => void
+  onEditClick: () => void
+}) {
   const SEP = "1px solid #2a2a2a"
   return (
     <div
@@ -188,12 +193,16 @@ function AreaTabsBar({ activeArea, setActiveArea }: { activeArea: string; setAct
       </div>
       {/* Ansicht toggle */}
       <div className="flex items-center px-3" style={{ borderLeft: SEP, flexShrink: 0 }}>
-        <button style={{
-          fontSize: 12, color: "#888", padding: "6px 10px",
-          border: "1px solid #333", borderRadius: 5, background: "transparent", cursor: "pointer",
-          whiteSpace: "nowrap",
-        }}>
-          👁 Ansicht ändern
+        <button
+          onClick={onEditClick}
+          style={{
+            fontSize: 12, color: "#c9a84c", padding: "6px 10px",
+            border: "1px solid rgba(201,168,76,0.35)", borderRadius: 5,
+            background: "rgba(201,168,76,0.08)", cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Grundriss bearbeiten
         </button>
       </div>
     </div>
@@ -795,6 +804,83 @@ function SlidePanel({ data, onClose }: { data: PanelData | null; onClose: () => 
   )
 }
 
+// ─── Editor Modal Overlay ─────────────────────────────────────────────────────
+
+function EditorModal({ areaId, onClose }: { areaId: string; onClose: () => void }) {
+  // Map raumplan area tab id → editor area id
+  const AREA_ID_MAP: Record<string, string> = {
+    billard: "billard",
+    salitos: "salitos",
+    rest140: "restaurant140",
+    rest75:  "restaurant75",
+    vip:     "vip",
+  }
+  const editorArea = AREA_ID_MAP[areaId] ?? "restaurant140"
+
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
+    window.addEventListener("keydown", handler)
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener("keydown", handler)
+    }
+  }, [onClose])
+
+  return (
+    <div
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: "#0a0a10",
+        display: "flex", flexDirection: "column",
+        // Ensure full-screen on iPad
+        width: "100dvw", height: "100dvh",
+        overflow: "hidden",
+      }}
+    >
+      {/* Editor title bar */}
+      <div style={{
+        height: 48, display: "flex", alignItems: "center",
+        background: "#0c0c14", borderBottom: "1px solid rgba(201,168,76,0.12)",
+        padding: "0 16px", gap: 12, flexShrink: 0,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: 6,
+            background: "#c9a84c", display: "flex", alignItems: "center",
+            justifyContent: "center", fontWeight: 900, color: "#0a0a0a",
+            fontSize: 15, fontFamily: "'Bebas Neue', cursive",
+          }}>R</div>
+          <span style={{ color: "#c9a84c", fontFamily: "'Bebas Neue', cursive", fontSize: 17, letterSpacing: "0.1em" }}>
+            RONDO
+          </span>
+          <span style={{ color: "#444", fontSize: 11, marginLeft: 4 }}>/ Grundriss Editor</span>
+        </div>
+        <div style={{ flex: 1 }} />
+        <button
+          onClick={onClose}
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "8px 16px", borderRadius: 8,
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            color: "#888", fontSize: 13, fontWeight: 600,
+            cursor: "pointer", minWidth: 44, minHeight: 44,
+          }}
+        >
+          ✕ Schliessen
+        </button>
+      </div>
+
+      {/* Embedded editor */}
+      <div style={{ flex: 1, overflow: "hidden" }}>
+        <EmbeddedEditor initialArea={editorArea} />
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function RaumplanPage() {
@@ -803,6 +889,7 @@ export default function RaumplanPage() {
   const [selTableId, setSelTableId] = useState<string | null>(null)
   const [selRowIdx, setSelRowIdx] = useState<number | null>(null)
   const [currentTime, setCurrentTime] = useState("")
+  const [editorOpen, setEditorOpen] = useState(false)
 
   useEffect(() => {
     const tick = () => {
@@ -859,7 +946,7 @@ export default function RaumplanPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden", fontFamily: "'DM Sans', sans-serif", background: "#111" }}>
       <Topbar currentTime={currentTime} />
-      <AreaTabsBar activeArea={activeArea} setActiveArea={setActiveArea} />
+      <AreaTabsBar activeArea={activeArea} setActiveArea={setActiveArea} onEditClick={() => setEditorOpen(true)} />
 
       {/* Body */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
@@ -870,6 +957,11 @@ export default function RaumplanPage() {
       </div>
 
       <SlidePanel data={panelData} onClose={closePanel} />
+
+      {/* Full-screen editor modal */}
+      {editorOpen && (
+        <EditorModal areaId={activeArea} onClose={() => setEditorOpen(false)} />
+      )}
     </div>
   )
 }
