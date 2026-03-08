@@ -911,10 +911,9 @@ function FloorPlan({
 
 // ─── Booking Form ─────────────────────────────────────────────────────────────
 
-function BookingForm({ tableTitle, onClose, onSave }: {
+function BookingForm({ tableTitle, onClose }: {
   tableTitle: string
   onClose: () => void
-  onSave: (data: { guest: string; pax: string; date: string; startTime: string; endTime: string; note: string }) => void
 }) {
   const [guest, setGuest]         = useState("")
   const [pax, setPax]             = useState("2")
@@ -922,22 +921,43 @@ function BookingForm({ tableTitle, onClose, onSave }: {
   const [startTime, setStartTime] = useState("19:00")
   const [endTime, setEndTime]     = useState("21:00")
   const [note, setNote]           = useState("")
+  const [saving, setSaving]       = useState(false)
   const [saved, setSaved]         = useState(false)
+  const [error, setError]         = useState("")
 
   const inp: React.CSSProperties = {
     width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #ddd",
-    borderRadius: 6, outline: "none", background: "#fff", boxSizing: "border-box",
-    color: "#111",
+    borderRadius: 6, outline: "none", background: "#fff", boxSizing: "border-box", color: "#111",
   }
   const lbl: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 4, display: "block" }
 
+  const handleSave = async () => {
+    if (!guest || saving) return
+    setSaving(true)
+    setError("")
+    try {
+      const res = await fetch("/api/reservations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guest, pax, date, startTime, endTime, note, tableLabel: tableTitle }),
+      })
+      const json = await res.json()
+      if (!json.ok) throw new Error(json.error ?? "Fehler beim Speichern")
+      setSaved(true)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (saved) return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 12, padding: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 12, padding: 24 }}>
       <div style={{ width: 52, height: 52, borderRadius: 26, background: "#e8f5e8", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <CheckCheck size={26} color="#2a7a2a" />
       </div>
       <div style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>Reservierung gespeichert!</div>
-      <div style={{ fontSize: 12, color: "#888" }}>{tableTitle} · {guest || "Gast"} · {pax} Pers.</div>
+      <div style={{ fontSize: 12, color: "#888" }}>{tableTitle} · {guest} · {pax} Pers. · {date}</div>
       <button onClick={onClose}
         style={{ marginTop: 8, padding: "9px 24px", borderRadius: 7, background: "#111", color: "#fff", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>
         Schliessen
@@ -977,15 +997,21 @@ function BookingForm({ tableTitle, onClose, onSave }: {
         <label style={lbl}>Interne Notiz</label>
         <textarea style={{ ...inp, height: 64, resize: "none" }} placeholder="Nicht für Gäste sichtbar..." value={note} onChange={e => setNote(e.target.value)} />
       </div>
+      {error && (
+        <div style={{ fontSize: 12, color: "#cc3333", background: "#fff5f5", border: "1px solid #ffcccc", borderRadius: 6, padding: "8px 10px" }}>
+          {error}
+        </div>
+      )}
       <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
         <button onClick={onClose}
           style={{ flex: 1, padding: "9px 0", borderRadius: 7, background: "#f5f5f5", color: "#555", fontSize: 13, fontWeight: 600, border: "1px solid #ddd", cursor: "pointer" }}>
           Abbrechen
         </button>
         <button
-          onClick={() => { if (guest) { onSave({ guest, pax, date, startTime, endTime, note }); setSaved(true) } }}
-          style={{ flex: 2, padding: "9px 0", borderRadius: 7, background: guest ? "#1a1a1a" : "#ccc", color: "#fff", fontSize: 13, fontWeight: 700, border: "none", cursor: guest ? "pointer" : "default" }}>
-          Reservierung speichern
+          onClick={handleSave}
+          disabled={!guest || saving}
+          style={{ flex: 2, padding: "9px 0", borderRadius: 7, background: guest && !saving ? "#1a1a1a" : "#ccc", color: "#fff", fontSize: 13, fontWeight: 700, border: "none", cursor: guest && !saving ? "pointer" : "default" }}>
+          {saving ? "Speichern…" : "Reservierung speichern"}
         </button>
       </div>
     </div>
@@ -1069,7 +1095,6 @@ function SlidePanel({
             <BookingForm
               tableTitle={data?.title ?? "Tisch"}
               onClose={onClose}
-              onSave={() => {}}
             />
           ) : data && (
             <>
@@ -1306,18 +1331,17 @@ export default function RaumplanPage() {
   const openRow = (idx: number, row: typeof RESERVATION_ROWS[0]) => {
     setSelRowIdx(idx)
     setSelTableId(null)
-    // Map table ref to panel data
-    const tableKey = row.table.includes("64") ? "t64"
-      : row.table.includes("65") ? "t65"
-      : row.table.includes("2") ? "t61"
-      : row.table.includes("3") ? "t63"
-      : row.table.includes("6") ? "t58"
-      : row.table.includes("1") ? "t51"
-      : "t50"
-    setPanelData(TABLE_DATA[tableKey] ?? {
+    setShowBookingForm(false)
+    // Build panel data directly from the row — no stale table key mapping
+    const status: PanelData["status"] =
+      row.status === "double-check" || row.status === "check" ? "Anwesend"
+      : row.status === "check-pause" ? "Anwesend"
+      : row.status === "ob" ? "Reserviert"
+      : "Reserviert"
+    setPanelData({
       title: `Tisch ${row.table}`,
       area: "Restaurant 140 Zoll",
-      status: "Reserviert",
+      status,
       guest: row.name,
       startTime: row.time,
       endTime: row.offset,

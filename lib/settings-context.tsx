@@ -64,28 +64,35 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const supabaseRef = useRef<SupabaseClient | null>(null)
 
   const getSupabase = () => {
-    if (!supabaseRef.current) {
-      supabaseRef.current = createClient()
+    try {
+      if (!supabaseRef.current) {
+        supabaseRef.current = createClient()
+      }
+      return supabaseRef.current
+    } catch {
+      return null
     }
-    return supabaseRef.current
   }
 
   const refreshSettings = async () => {
     try {
       const supabase = getSupabase()
+      if (!supabase) return
       const { data, error } = await supabase.from("settings").select("key, value")
       if (error) throw error
       if (data && data.length > 0) {
         setSettings(assembleSettings(data))
       }
     } catch (err) {
-      console.error("[v0] Failed to load settings:", err)
+      // Silently fall back to default settings — no crash
+      console.warn("[v0] Settings load failed, using defaults:", (err as Error).message)
     }
   }
 
   const updateSettings = async (updates: Partial<Settings>) => {
     try {
       const supabase = getSupabase()
+      if (!supabase) return
       const keyMap: Record<string, unknown> = {}
       if (updates.opening_hours)      keyMap["opening_hours"] = updates.opening_hours
       if (updates.booking_rules)      keyMap["booking_rules"] = updates.booking_rules
@@ -106,6 +113,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const supabase = getSupabase()
     refreshSettings()
+    if (!supabase) return
 
     const channel = supabase
       .channel("settings-changes")
