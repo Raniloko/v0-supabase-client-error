@@ -587,91 +587,385 @@ function BTable({
 }
 
 // ─── Floor Plan SVG ────────────────────────────────────────────────────────────
-// Uses shared AREA_TABLE_DEFS + RoomGeometry so dashboard and editor always match.
+// Pixel-perfect implementation per canvas.md spec.
+
+const CANVAS_TABLE_DATA: Record<string, { title: string; status: string; guest?: string; startTime?: string; endTime?: string; pax?: string }> = {
+  t10: { title: "Tisch 10",  status: "Frei" },
+  t30: { title: "Tisch 30",  status: "Frei" },
+  t50: { title: "Tisch 50",  status: "Frei" },
+  t51: { title: "Tisch 51",  status: "Frei" },
+  t52: { title: "Tisch 52",  status: "Frei" },
+  t53: { title: "Tisch 53",  status: "Frei" },
+  t54: { title: "Tisch 54",  status: "Frei" },
+  t58: { title: "Tisch 58",  status: "Frei" },
+  t59: { title: "Tisch 59",  status: "Frei" },
+  t60: { title: "Tisch 60",  status: "Frei" },
+  t61: { title: "Tisch 61",  status: "Reserviert", guest: "Guido",     startTime: "01:30", endTime: "03:00", pax: "2" },
+  t62: { title: "Tisch 62",  status: "Reserviert", guest: "Lentino",   startTime: "19:30", endTime: "21:00", pax: "3" },
+  t63: { title: "Tisch 63",  status: "Reserviert", guest: "Santos d.", startTime: "20:00", endTime: "22:00", pax: "4" },
+  t64: { title: "Tisch 64",  status: "Anwesend",   guest: "Licata",    startTime: "19:30", endTime: "21:30", pax: "2" },
+  t65: { title: "Tisch 65",  status: "Anwesend",   guest: "Gutsch",    startTime: "20:00", endTime: "22:00", pax: "4" },
+  t66: { title: "Tisch 66",  status: "Frei" },
+  t67: { title: "Tisch 67",  status: "Frei" },
+  b1:  { title: "Billard 1", status: "Frei" },
+  b2:  { title: "Billard 2", status: "Reserviert", guest: "Michelik",  startTime: "19:15", endTime: "21:15", pax: "4" },
+  b3:  { title: "Billard 3", status: "Frei" },
+}
+
+// Chair helper used by cross-tables
+function Chair({ x, y, w, h, fill, opacity }: { x: number; y: number; w: number; h: number; fill: string; opacity: number }) {
+  return <rect x={x} y={y} width={w} height={h} rx={3} fill={fill} opacity={opacity} />
+}
+
+// Cross-shaped restaurant table
+function CrossTable({
+  id, vx, vy, vw, vh, hx, hy, hw, hh,
+  fill, opacity, numColor, numLabel, numX, numY,
+  chairs, onTableClick, sel,
+  nameTag, timeBadge,
+}: {
+  id: string
+  vx: number; vy: number; vw: number; vh: number
+  hx: number; hy: number; hw: number; hh: number
+  fill: string; opacity: number; numColor: string; numLabel: string
+  numX: number; numY: number
+  chairs: { x: number; y: number; w: number; h: number }[]
+  onTableClick: (id: string) => void
+  sel: string | null
+  nameTag?: { text: string; rx: number; ry: number; rw: number; rh: number; fill: string }
+  timeBadge?: { text: string; rx: number; ry: number; rw: number; rh: number; color: string }
+}) {
+  const selected = sel === id
+  return (
+    <g
+      onClick={() => onTableClick(id)}
+      style={{ cursor: "pointer" }}
+      filter={selected ? "brightness(1.25)" : undefined}
+    >
+      {chairs.map((c, i) => (
+        <Chair key={i} x={c.x} y={c.y} w={c.w} h={c.h} fill={fill} opacity={opacity * 0.55} />
+      ))}
+      {selected && (
+        <rect x={hx - 8} y={vy - 8} width={hw + 16} height={vh + 16} rx={6}
+          fill="none" stroke="rgba(240,192,96,0.65)" strokeWidth={2} strokeDasharray="5 3" />
+      )}
+      <rect x={vx} y={vy} width={vw} height={vh} rx={5} fill={fill} opacity={opacity} />
+      <rect x={hx} y={hy} width={hw} height={hh} rx={5} fill={fill} opacity={opacity} />
+      {timeBadge && (
+        <>
+          <rect x={timeBadge.rx} y={timeBadge.ry} width={timeBadge.rw} height={timeBadge.rh} rx={3} fill="rgba(0,0,0,0.6)" />
+          <text x={timeBadge.rx + timeBadge.rw / 2} y={timeBadge.ry + 9} textAnchor="middle"
+            fill={timeBadge.color} fontSize={9} fontWeight="bold" fontFamily="'DM Sans',sans-serif">{timeBadge.text}</text>
+        </>
+      )}
+      <text x={numX} y={numY} textAnchor="middle" dominantBaseline="middle"
+        fill={numColor} fontSize={13} fontWeight="bold" fontFamily="'DM Sans',sans-serif">{numLabel}</text>
+      {nameTag && (
+        <>
+          <rect x={nameTag.rx} y={nameTag.ry} width={nameTag.rw} height={nameTag.rh} rx={3} fill={nameTag.fill} />
+          <text x={nameTag.rx + nameTag.rw / 2} y={nameTag.ry + 10} textAnchor="middle"
+            fill="#fff" fontSize={10} fontWeight="bold" fontFamily="'DM Sans',sans-serif">{nameTag.text}</text>
+        </>
+      )}
+    </g>
+  )
+}
+
+// Billiard table
+function BilliardTable({
+  id, x, y, w, h, transform,
+  strokeColor, strokeWidth,
+  overlay,
+  pockets, balls, centerLineX,
+  label, labelY,
+  nameTagY, nameTagText,
+  timeTagY, timeTagText,
+  onTableClick, sel,
+}: {
+  id: string; x: number; y: number; w: number; h: number
+  transform?: string
+  strokeColor: string; strokeWidth: number
+  overlay?: string
+  pockets: [number, number][]
+  balls: { cx: number; cy: number; r: number; fill: string; op: number }[]
+  centerLineX: number
+  label: string; labelY: number
+  nameTagY?: number; nameTagText?: string
+  timeTagY?: number; timeTagText?: string
+  onTableClick: (id: string) => void; sel: string | null
+}) {
+  const selected = sel === id
+  return (
+    <g transform={transform} onClick={() => onTableClick(id)} style={{ cursor: "pointer" }}
+      filter={selected ? "brightness(1.2)" : undefined}>
+      <text x={x + w / 2} y={labelY} textAnchor="middle"
+        fill="rgba(255,255,255,0.10)" fontSize={10} fontFamily="'DM Sans',sans-serif" letterSpacing="0.12em">{label}</text>
+      {selected && (
+        <rect x={x - 10} y={y - 10} width={w + 20} height={h + 20} rx={7}
+          fill="none" stroke="rgba(240,192,96,0.6)" strokeWidth={2} strokeDasharray="5 3" />
+      )}
+      <rect x={x} y={y} width={w} height={h} rx={6} fill="#1c6e2a" stroke={strokeColor} strokeWidth={strokeWidth} />
+      <rect x={x + 5} y={y + 5} width={w - 10} height={h - 10} rx={4} fill="#1e7830" opacity={0.6} />
+      {overlay && <rect x={x + 5} y={y + 5} width={w - 10} height={h - 10} rx={4} fill={overlay} />}
+      <line x1={centerLineX} y1={y + 5} x2={centerLineX} y2={y + h - 5}
+        stroke="rgba(255,255,255,0.12)" strokeWidth={1.5} />
+      {pockets.map(([px, py], i) => <circle key={i} cx={px} cy={py} r={7} fill="#0a0a0a" />)}
+      {balls.map((b, i) => <circle key={i} cx={b.cx} cy={b.cy} r={b.r} fill={b.fill} opacity={b.op} />)}
+      <ellipse cx={x + w / 2} cy={y + h / 2} rx={30} ry={18} fill="rgba(255,200,80,0.06)" />
+      {nameTagText && nameTagY && (
+        <>
+          <rect x={x} y={nameTagY} width={w} height={16} rx={3} fill="#3a6adb" />
+          <text x={x + w / 2} y={nameTagY + 11} textAnchor="middle"
+            fill="#fff" fontSize={10} fontWeight="bold" fontFamily="'DM Sans',sans-serif">{nameTagText}</text>
+        </>
+      )}
+      {timeTagText && timeTagY && (
+        <>
+          <rect x={x} y={timeTagY} width={w} height={13} rx={3} fill="rgba(0,0,0,0.45)" />
+          <text x={x + w / 2} y={timeTagY + 9} textAnchor="middle"
+            fill="#7aadff" fontSize={9} fontFamily="'DM Sans',sans-serif">{timeTagText}</text>
+        </>
+      )}
+    </g>
+  )
+}
 
 function FloorPlan({
-  selId, onTableClick, activeArea,
+  selId, onTableClick,
 }: {
   selId: string | null
   onTableClick: (id: string) => void
   activeArea: string
 }) {
-  // Map raumplan area tab id → geometry area id
-  const AREA_MAP: Record<string, string> = {
-    billard: "billard",
-    salitos: "salitos",
-    rest140: "restaurant140",
-    rest75:  "restaurant75",
-    vip:     "vip",
-  }
-  const geoArea = AREA_MAP[activeArea] ?? "restaurant140"
-  const canvas  = AREA_CANVAS[geoArea] ?? { w: 860, h: 560 }
-  const defs    = AREA_TABLE_DEFS[geoArea] ?? []
+  const FREE_FILL   = "#d4d4dc"; const FREE_OP   = 0.88; const FREE_NUM   = "#222"
+  const RES_FILL    = "#3a7bd5"; const RES_OP    = 0.92; const RES_NUM    = "#fff"
+  const PRES_FILL   = "#1e8a38"; const PRES_OP   = 0.95; const PRES_NUM   = "#fff"
 
-  const STATUS_MAP: Record<string, TableStatus> = {
-    // Upper zone – all free (white)
-    t10:"free", t30:"free",
-    t50:"free", t51:"free", t52:"free", t53:"free", t54:"free",
-    t58:"free", t59:"free",
-    // Lower zone top row
-    t60:"free", t61:"booked", t66:"free", t67:"free",
-    // Lower zone bottom row
-    t62:"booked", t63:"booked",
-    t64:"present", t65:"present",
-    // Billiards
-    b1:"free", b2:"reserved", b3:"free",
-  }
-  const s = (id: string): TableStatus => STATUS_MAP[id] ?? "free"
-  const d = TABLE_DATA
+  const B_BALLS_1 = [
+    { cx: 350, cy: 75,  r: 7, fill: "#f0f0f0", op: 0.75 },
+    { cx: 380, cy: 90,  r: 6, fill: "#cc2222", op: 0.80 },
+    { cx: 330, cy: 105, r: 6, fill: "#f5c842", op: 0.75 },
+    { cx: 420, cy: 80,  r: 6, fill: "#1a4adc", op: 0.75 },
+    { cx: 440, cy: 120, r: 6, fill: "#f0f0f0", op: 0.55 },
+    { cx: 360, cy: 130, r: 5, fill: "#cc2222", op: 0.60 },
+    { cx: 410, cy: 110, r: 5, fill: "#f5c842", op: 0.60 },
+  ]
+  const B_BALLS_2 = B_BALLS_1.map(b => ({ ...b, cx: b.cx + 235 }))
+  const B_BALLS_3 = [
+    { cx: 820, cy: 200, r: 7, fill: "#f0f0f0", op: 0.75 },
+    { cx: 850, cy: 220, r: 6, fill: "#cc2222", op: 0.80 },
+    { cx: 800, cy: 240, r: 6, fill: "#f5c842", op: 0.75 },
+    { cx: 920, cy: 195, r: 6, fill: "#1a4adc", op: 0.75 },
+    { cx: 940, cy: 250, r: 6, fill: "#f0f0f0", op: 0.55 },
+    { cx: 870, cy: 260, r: 5, fill: "#cc2222", op: 0.60 },
+    { cx: 890, cy: 210, r: 5, fill: "#f5c842", op: 0.60 },
+  ]
 
   return (
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <svg
-      viewBox={`0 0 ${canvas.w} ${canvas.h}`}
-      preserveAspectRatio="xMidYMid meet"
-      className="w-full h-full"
-      style={{ display: "block", background: "#111111" }}
-    >
-      {/* ── Fixed room geometry (walls, zones, decorations) ── */}
-      <RoomGeometry areaId={geoArea} />
+        viewBox="0 0 1000 680"
+        preserveAspectRatio="xMidYMid meet"
+        width="100%" height="100%"
+        style={{
+          display: "block", position: "absolute", inset: 0,
+          background: "radial-gradient(ellipse 40% 35% at 52% 38%, rgba(255,150,40,0.07) 0%, transparent 65%), #111111",
+        }}
+      >
+        {/* Room border */}
+        <rect x={6} y={6} width={988} height={668} rx={5} fill="none" stroke="#222" strokeWidth={1.5} />
 
-      {/* ── Tables for this area ── */}
-      {defs.map(def => {
-        if (def.type === "billiard") {
-          const bStatus = s(def.id) === "reserved" ? "reserved" : s(def.id) === "booked" ? "reserved" : s(def.id)
-          const bData   = d[def.id]
-          return (
-            <BTable
-              key={def.id}
-              id={def.id}
-              x={def.x} y={def.y} w={def.w} h={def.h}
-              status={bStatus as TableStatus}
-              label={def.label.toUpperCase()}
-              name={bData?.guest}
-              time={bData?.startTime && bData?.endTime ? `${bData.startTime} – ${bData.endTime}` : undefined}
-              sel={selId}
-              onClick={onTableClick}
-              transform={def.rotation ? `rotate(${def.rotation}, ${def.cx}, ${def.cy})` : undefined}
-            />
-          )
-        }
-        return (
-          <TTable
-            key={def.id}
-            id={def.id}
-            cx={def.cx} cy={def.cy}
-            vw={def.vw!} vh={def.vh!} hw={def.hw!} hh={def.hh!}
-            status={s(def.id)}
-            label={def.label}
-            pax={d[def.id]?.pax ? parseInt(d[def.id]!.pax!) : undefined}
-            name={d[def.id]?.guest}
-            time={d[def.id]?.startTime}
-            sel={selId}
-            onClick={onTableClick}
-            cT={def.cT} cB={def.cB} cL={def.cL} cR={def.cR}
-          />
-        )
-      })}
-    </svg>
+        {/* Atmospheric glow */}
+        <ellipse cx={430} cy={230} rx={80} ry={40} fill="rgba(255,160,50,0.06)" opacity={0.7} />
+
+        {/* ── BILLARD 1 – Free ── */}
+        <BilliardTable id="b1" x={290} y={30} w={210} h={135}
+          strokeColor="#7a4e1a" strokeWidth={5}
+          pockets={[[294,34],[496,34],[294,162],[496,162],[294,98],[496,98]]}
+          balls={B_BALLS_1} centerLineX={395}
+          label="BILLARD 1" labelY={22}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* ── BILLARD 2 – Reserved (Michelik) ── */}
+        <BilliardTable id="b2" x={525} y={30} w={210} h={135}
+          strokeColor="#3a6adb" strokeWidth={4}
+          overlay="rgba(58,106,219,0.06)"
+          pockets={[[529,34],[731,34],[529,162],[731,162],[529,98],[731,98]]}
+          balls={B_BALLS_2} centerLineX={630}
+          label="BILLARD 2" labelY={22}
+          nameTagY={170} nameTagText="Michelik"
+          timeTagY={187} timeTagText="19:15 - 21:15"
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* ── BILLARD 3 – Free, diagonal ── */}
+        <BilliardTable id="b3" x={755} y={160} w={230} h={130}
+          transform="rotate(-32, 870, 270)"
+          strokeColor="#7a4e1a" strokeWidth={5}
+          pockets={[[759,164],[981,164],[759,290],[981,290],[759,227],[981,227]]}
+          balls={B_BALLS_3} centerLineX={870}
+          label="BILLARD 3" labelY={155}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* ── TABLE 10 – free, top-left ── */}
+        <CrossTable id="t10"
+          vx={88} vy={28} vw={28} vh={76} hx={62} hy={50} hw={80} hh={32}
+          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="10" numX={102} numY={71}
+          chairs={[{x:60,y:55,w:10,h:14},{x:134,y:55,w:10,h:14},{x:94,y:20,w:16,h:8},{x:94,y:102,w:16,h:8}]}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* ── TABLE 52 – free ── */}
+        <CrossTable id="t52"
+          vx={158} vy={278} vw={26} vh={60} hx={130} hy={296} hw={82} hh={24}
+          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="52" numX={171} numY={312}
+          chairs={[{x:128,y:300,w:10,h:12},{x:206,y:300,w:10,h:12},{x:165,y:270,w:14,h:8},{x:165,y:336,w:14,h:8}]}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* ── TABLE 53 – free (wider) ── */}
+        <CrossTable id="t53"
+          vx={330} vy={278} vw={28} vh={60} hx={296} hy={296} hw={96} hh={24}
+          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="53" numX={344} numY={312}
+          chairs={[
+            {x:293,y:299,w:10,h:12},{x:382,y:299,w:10,h:12},
+            {x:306,y:270,w:14,h:8},{x:334,y:270,w:14,h:8},{x:362,y:270,w:14,h:8},
+            {x:306,y:336,w:14,h:8},{x:334,y:336,w:14,h:8},{x:362,y:336,w:14,h:8},
+          ]}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* ── TABLE 54 – free (largest) ── */}
+        <CrossTable id="t54"
+          vx={522} vy={272} vw={34} vh={72} hx={480} hy={292} hw={118} hh={32}
+          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="54" numX={539} numY={312}
+          chairs={[
+            {x:476,y:296,w:10,h:12},{x:476,y:314,w:10,h:12},
+            {x:592,y:296,w:10,h:12},{x:592,y:314,w:10,h:12},
+            {x:492,y:264,w:14,h:8},{x:514,y:264,w:14,h:8},{x:536,y:264,w:14,h:8},{x:558,y:264,w:14,h:8},
+            {x:492,y:342,w:14,h:8},{x:514,y:342,w:14,h:8},{x:536,y:342,w:14,h:8},{x:558,y:342,w:14,h:8},
+          ]}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* ── TABLE 51 – free ── */}
+        <CrossTable id="t51"
+          vx={158} vy={388} vw={26} vh={60} hx={130} hy={406} hw={82} hh={24}
+          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="51" numX={171} numY={422}
+          chairs={[{x:128,y:410,w:10,h:12},{x:206,y:410,w:10,h:12},{x:165,y:380,w:14,h:8},{x:165,y:446,w:14,h:8}]}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* ── TABLE 50 – free ── */}
+        <CrossTable id="t50"
+          vx={330} vy={388} vw={26} vh={60} hx={302} hy={406} hw={82} hh={24}
+          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="50" numX={343} numY={422}
+          chairs={[{x:300,y:410,w:10,h:12},{x:378,y:410,w:10,h:12},{x:338,y:380,w:14,h:8},{x:338,y:446,w:14,h:8}]}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* ── TABLE 58 – free (wider) ── */}
+        <CrossTable id="t58"
+          vx={516} vy={388} vw={28} vh={60} hx={482} hy={406} hw={96} hh={24}
+          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="58" numX={530} numY={422}
+          chairs={[
+            {x:480,y:409,w:10,h:12},{x:572,y:409,w:10,h:12},
+            {x:492,y:380,w:14,h:8},{x:514,y:380,w:14,h:8},{x:536,y:380,w:14,h:8},
+            {x:492,y:446,w:14,h:8},{x:514,y:446,w:14,h:8},{x:536,y:446,w:14,h:8},
+          ]}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* ── TABLE 59 – free (far right) ── */}
+        <CrossTable id="t59"
+          vx={720} vy={400} vw={22} vh={48} hx={698} hy={416} hw={66} hh={20}
+          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="59" numX={731} numY={430}
+          chairs={[{x:696,y:419,w:9,h:10},{x:759,y:419,w:9,h:10},{x:726,y:393,w:12,h:7},{x:726,y:446,w:12,h:7}]}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* ── TABLE 30 – free, bottom-left, outside box ── */}
+        <CrossTable id="t30"
+          vx={72} vy={460} vw={26} vh={60} hx={46} hy={478} hw={78} hh={24}
+          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="30" numX={85} numY={494}
+          chairs={[{x:44,y:482,w:10,h:12},{x:118,y:482,w:10,h:12},{x:78,y:452,w:14,h:8},{x:78,y:518,w:14,h:8}]}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* ── Plant ── */}
+        <text x={272} y={540} fontSize={38} textAnchor="middle">🌿</text>
+
+        {/* ── Enclosed bottom box ── */}
+        <rect x={330} y={490} width={638} height={184} rx={5}
+          fill="rgba(14,14,16,0.88)" stroke="#2a2a2a" strokeWidth={2} />
+
+        {/* BOX ROW 1 – tables 61, 60, 67, 66 */}
+
+        {/* TABLE 61 – reserved (Guido) */}
+        <CrossTable id="t61"
+          vx={366} vy={506} vw={24} vh={58} hx={338} hy={524} hw={80} hh={22}
+          fill={RES_FILL} opacity={RES_OP} numColor={RES_NUM} numLabel="61" numX={378} numY={538}
+          chairs={[{x:336,y:528,w:10,h:10},{x:412,y:528,w:10,h:10},{x:371,y:498,w:14,h:8},{x:371,y:562,w:14,h:8}]}
+          nameTag={{ text: "2 | Guido", rx: 338, ry: 572, rw: 80, rh: 15, fill: RES_FILL }}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* TABLE 60 – free */}
+        <CrossTable id="t60"
+          vx={518} vy={506} vw={24} vh={58} hx={490} hy={524} hw={80} hh={22}
+          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="60" numX={530} numY={538}
+          chairs={[{x:488,y:528,w:10,h:10},{x:564,y:528,w:10,h:10},{x:524,y:498,w:14,h:8},{x:524,y:562,w:14,h:8}]}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* TABLE 67 – free */}
+        <CrossTable id="t67"
+          vx={668} vy={506} vw={24} vh={58} hx={640} hy={524} hw={80} hh={22}
+          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="67" numX={680} numY={538}
+          chairs={[{x:638,y:528,w:10,h:10},{x:714,y:528,w:10,h:10},{x:674,y:498,w:14,h:8},{x:674,y:562,w:14,h:8}]}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* TABLE 66 – free */}
+        <CrossTable id="t66"
+          vx={820} vy={506} vw={24} vh={58} hx={792} hy={524} hw={80} hh={22}
+          fill={FREE_FILL} opacity={FREE_OP} numColor={FREE_NUM} numLabel="66" numX={832} numY={538}
+          chairs={[{x:790,y:528,w:10,h:10},{x:866,y:528,w:10,h:10},{x:826,y:498,w:14,h:8},{x:826,y:562,w:14,h:8}]}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* BOX ROW 2 – tables 62, 63, 64, 65 */}
+
+        {/* TABLE 62 – reserved (Lentino) */}
+        <CrossTable id="t62"
+          vx={366} vy={618} vw={24} vh={42} hx={338} hy={632} hw={80} hh={20}
+          fill={RES_FILL} opacity={RES_OP} numColor={RES_NUM} numLabel="62" numX={378} numY={645}
+          chairs={[{x:336,y:636,w:10,h:9},{x:412,y:636,w:10,h:9},{x:371,y:612,w:14,h:6},{x:371,y:658,w:14,h:6}]}
+          nameTag={{ text: "3 | Lentino", rx: 338, ry: 666, rw: 80, rh: 15, fill: RES_FILL }}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* TABLE 63 – reserved (Santos d.) */}
+        <CrossTable id="t63"
+          vx={518} vy={618} vw={24} vh={42} hx={490} hy={632} hw={80} hh={20}
+          fill={RES_FILL} opacity={RES_OP} numColor={RES_NUM} numLabel="63" numX={530} numY={645}
+          chairs={[{x:488,y:636,w:10,h:9},{x:564,y:636,w:10,h:9},{x:524,y:612,w:14,h:6},{x:524,y:658,w:14,h:6}]}
+          nameTag={{ text: "4 | Santos d.", rx: 490, ry: 666, rw: 80, rh: 15, fill: RES_FILL }}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* TABLE 64 – present (Licata, 19:30) */}
+        <CrossTable id="t64"
+          vx={668} vy={615} vw={24} vh={44} hx={640} hy={630} hw={80} hh={22}
+          fill={PRES_FILL} opacity={PRES_OP} numColor={PRES_NUM} numLabel="64" numX={680} numY={644}
+          chairs={[{x:638,y:634,w:10,h:10},{x:714,y:634,w:10,h:10},{x:674,y:608,w:14,h:7},{x:674,y:657,w:14,h:7}]}
+          timeBadge={{ text: "19:30", rx: 652, ry: 606, rw: 46, rh: 13, color: "#5de88a" }}
+          nameTag={{ text: "2 | Licata", rx: 640, ry: 665, rw: 80, rh: 15, fill: PRES_FILL }}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* TABLE 65 – present (Gutsch, 20:00) */}
+        <CrossTable id="t65"
+          vx={820} vy={615} vw={24} vh={44} hx={792} hy={630} hw={80} hh={22}
+          fill={PRES_FILL} opacity={PRES_OP} numColor={PRES_NUM} numLabel="65" numX={832} numY={644}
+          chairs={[{x:790,y:634,w:10,h:10},{x:866,y:634,w:10,h:10},{x:826,y:608,w:14,h:7},{x:826,y:657,w:14,h:7}]}
+          timeBadge={{ text: "20:00", rx: 806, ry: 606, rw: 46, rh: 13, color: "#5de88a" }}
+          nameTag={{ text: "4 | Gutsch", rx: 792, ry: 665, rw: 80, rh: 15, fill: PRES_FILL }}
+          onTableClick={onTableClick} sel={selId} />
+
+        {/* ── Rondo logo box ── */}
+        <rect x={14} y={545} width={222} height={126} rx={6}
+          fill="rgba(10,10,10,0.96)" stroke="#2a2a2a" strokeWidth={1.5} />
+        <image
+          href="/rondo-logo.png"
+          x={20} y={552} width={210} height={112}
+          preserveAspectRatio="xMidYMid meet"
+        />
+      </svg>
+    </div>
   )
 }
 
@@ -909,11 +1203,18 @@ export default function RaumplanPage() {
   }
 
   const openTable = (id: string) => {
-    const d = TABLE_DATA[id]
+    const d = CANVAS_TABLE_DATA[id] ?? TABLE_DATA[id]
     if (!d) return
+    setPanelData({
+      title:     d.title,
+      area:      activeArea,
+      status:    d.status as PanelData["status"],
+      guest:     d.guest,
+      startTime: d.startTime,
+      endTime:   d.endTime,
+      pax:       d.pax,
+    })
     setSelTableId(id)
-    setSelRowIdx(null)
-    setPanelData(d)
   }
 
   const openRow = (idx: number, row: typeof RESERVATION_ROWS[0]) => {
