@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import {
   Plus, Save, Trash2, RotateCcw, Grid, Lock, Unlock,
   ZoomIn, ZoomOut, Maximize2, Copy, Layers,
-  AlignLeft, AlignCenter, Move, MousePointer, X, Tv,
+  AlignLeft, AlignCenter, Move, MousePointer, X,
 } from "lucide-react"
 import { RoomGeometry, AREA_TABLE_DEFS, AREA_CANVAS } from "@/lib/floor-geometry"
 
@@ -593,7 +593,7 @@ function Toolbar({
           background: "rgba(41,182,246,0.1)", border: "1px solid rgba(41,182,246,0.3)",
           color: "#29b6f6", cursor: "pointer", flexShrink: 0,
         }}>
-        <Tv className="w-4 h-4" /> Fernseher
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="15" x="2" y="3" rx="2"/><polyline points="8 21 12 17 16 21"/></svg> Fernseher
       </button>
 
       <Sep />
@@ -732,7 +732,7 @@ function ToastStack({ toasts }: { toasts: Toast[] }) {
   )
 }
 
-// ─── Core Editor (shared between standalone page and embedded modal) ───────────
+// ─── Core Editor (shared between standalone page and embedded modal) ────────���──
 
 export function EmbeddedEditor({ initialArea = "restaurant140" }: { initialArea?: string }) {
   const supabase   = createClient()
