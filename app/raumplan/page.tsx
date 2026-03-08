@@ -456,51 +456,74 @@ function BTable({
   sel: string | null; onClick: (id: string) => void; transform?: string
 }) {
   const selected = sel === id
-  const pocketColor = "#040404"
-  const pockets = [
-    [x + 8, y + 8], [x + w / 2, y + 7], [x + w - 8, y + 8],
-    [x + 8, y + h - 8], [x + w / 2, y + h - 7], [x + w - 8, y + h - 8],
+  const railColor   = selected ? "#f0c060" : status === "reserved" ? "#c9a84c" : "#5a5a5a"
+  const railWidth   = selected ? 3.5 : status === "reserved" ? 3 : 3
+
+  // 6 pockets: 4 corners + 2 side midpoints (landscape: mid on long/top+bottom sides)
+  const pockets: [number, number][] = [
+    [x + 9,     y + 9    ],
+    [x + w / 2, y + 8    ],
+    [x + w - 9, y + 9    ],
+    [x + 9,     y + h - 9],
+    [x + w / 2, y + h - 8],
+    [x + w - 9, y + h - 9],
   ]
-  const strokeC = selected ? "#f0c060" : status === "reserved" ? "#3a6adb" : "#8B5E2A"
 
   return (
     <g transform={transform} onClick={() => onClick(id)} style={{ cursor: "pointer" }}>
-      <text x={x + w / 2} y={y - 7} textAnchor="middle"
-        fill="#3a3a52" fontSize={8} fontFamily="'Bebas Neue', cursive" letterSpacing="0.1em">{label}</text>
+      {/* Label above */}
+      <text x={x + w / 2} y={y - 6} textAnchor="middle"
+        fill="#3a3a3a" fontSize={8} fontFamily="'Bebas Neue', cursive" letterSpacing="0.12em">{label}</text>
 
-      <rect x={x} y={y} width={w} height={h} rx={6}
-        fill="#1a6b2a" stroke={strokeC} strokeWidth={selected ? 3.5 : 3.5}
-      />
+      {/* Outer rail – grey metal border */}
+      <rect x={x - 4} y={y - 4} width={w + 8} height={h + 8} rx={5}
+        fill="none" stroke={railColor} strokeWidth={railWidth} />
+
+      {/* Green felt surface */}
+      <rect x={x} y={y} width={w} height={h} rx={3} fill="#1a6b2a" />
+
+      {/* Gold tint overlay if reserved */}
       {status === "reserved" && (
-        <rect x={x} y={y} width={w} height={h} rx={6} fill="rgba(58,106,219,0.07)" />
+        <rect x={x} y={y} width={w} height={h} rx={3} fill="rgba(201,168,76,0.06)" />
       )}
 
-      {/* Center line */}
-      <line x1={x + 10} y1={y + h / 2} x2={x + w - 10} y2={y + h / 2}
-        stroke="rgba(255,255,255,0.12)" strokeWidth={1} />
+      {/* Center line (horizontal, landscape) */}
+      <line x1={x + 12} y1={y + h / 2} x2={x + w - 12} y2={y + h / 2}
+        stroke="rgba(255,255,255,0.13)" strokeWidth={1} />
 
       {/* Pockets */}
       {pockets.map(([px, py], i) => (
-        <circle key={i} cx={px} cy={py} r={5.5} fill={pocketColor} />
+        <circle key={i} cx={px} cy={py} r={5.5} fill="#060606" />
       ))}
 
-      {/* Balls */}
-      <circle cx={x + w * 0.38} cy={y + h * 0.42} r={5} fill="#e74c3c" opacity={0.85} />
-      <circle cx={x + w * 0.52} cy={y + h * 0.52} r={5} fill="#f0f0f0" opacity={0.85} />
-      <circle cx={x + w * 0.65} cy={y + h * 0.42} r={5} fill="#f39c12" opacity={0.85} />
+      {/* Billiard balls */}
+      <circle cx={x + w * 0.36} cy={y + h * 0.40} r={5} fill="#e03030" opacity={0.88} />
+      <circle cx={x + w * 0.50} cy={y + h * 0.58} r={5} fill="#f0f0f0" opacity={0.88} />
+      <circle cx={x + w * 0.64} cy={y + h * 0.40} r={5} fill="#e8a020" opacity={0.88} />
+      <circle cx={x + w * 0.44} cy={y + h * 0.72} r={4} fill="#3060d0" opacity={0.80} />
+      <circle cx={x + w * 0.58} cy={y + h * 0.72} r={4} fill="#1a8030" opacity={0.80} />
 
-      {/* Guest name tag */}
+      {/* Guest name tag (below table) */}
       {name && (
         <>
-          <rect x={x} y={y + h + 6} width={w} height={14} rx={3} fill="#3a6adb" opacity={0.9} />
-          <text x={x + w / 2} y={y + h + 17} textAnchor="middle" fill="#fff" fontSize={9} fontWeight="bold">{name}</text>
+          <rect x={x} y={y + h + 7} width={w} height={14} rx={3}
+            fill={status === "reserved" ? "#a07820" : "#2a6a2a"} opacity={0.92} />
+          <text x={x + w / 2} y={y + h + 18} textAnchor="middle"
+            fill="#fff" fontSize={9} fontWeight="bold">{name}</text>
           {time && (
             <>
-              <rect x={x} y={y + h + 21} width={w} height={12} rx={3} fill="rgba(0,0,0,0.4)" />
-              <text x={x + w / 2} y={y + h + 31} textAnchor="middle" fill="#aaccff" fontSize={8}>{time}</text>
+              <rect x={x} y={y + h + 22} width={w} height={12} rx={3} fill="rgba(0,0,0,0.45)" />
+              <text x={x + w / 2} y={y + h + 32} textAnchor="middle"
+                fill={status === "reserved" ? "#f0d070" : "#a0e8a0"} fontSize={8}>{time}</text>
             </>
           )}
         </>
+      )}
+
+      {/* Selection ring */}
+      {selected && (
+        <rect x={x - 8} y={y - 8} width={w + 16} height={h + 16} rx={7}
+          fill="none" stroke="rgba(240,192,96,0.55)" strokeWidth={1.5} strokeDasharray="5 3" />
       )}
     </g>
   )
@@ -509,15 +532,6 @@ function BTable({
 // ─── Floor Plan SVG ────────────────────────────────────────────────────────────
 
 function FloorPlan({ selId, onTableClick }: { selId: string | null; onTableClick: (id: string) => void }) {
-  const T = (id: string) => ({ ...TABLE_DATA[id], tableStatus: (Object.entries({
-    t10:"free", t30:"free", t50:"free", t51:"free", t52:"free", t53:"free", t54:"free",
-    t58:"free", t59:"free", t60:"free",
-    t61:"booked", t62:"booked", t63:"booked",
-    t64:"present", t65:"present",
-    t66:"free", t67:"free",
-    b1:"free", b2:"reserved", b3:"free",
-  }).find(([k]) => k === id)?.[1] ?? "free") as TableStatus })
-
   const tStatus = (id: string): TableStatus => {
     const map: Record<string, TableStatus> = {
       t10:"free", t30:"free", t50:"free", t51:"free", t52:"free", t53:"free", t54:"free",
@@ -531,8 +545,11 @@ function FloorPlan({ selId, onTableClick }: { selId: string | null; onTableClick
   }
   const d = TABLE_DATA
 
-  const tt = (id: string, cx: number, cy: number, vw: number, vh: number, hw: number, hh: number,
-    cT = 2, cB = 2, cL = 1, cR = 1) => (
+  const tt = (
+    id: string, cx: number, cy: number,
+    vw: number, vh: number, hw: number, hh: number,
+    cT = 2, cB = 2, cL = 1, cR = 1,
+  ) => (
     <TTable id={id} cx={cx} cy={cy} vw={vw} vh={vh} hw={hw} hh={hh}
       status={tStatus(id)} label={d[id]?.title.replace("Tisch ", "") ?? id}
       pax={d[id]?.pax ? parseInt(d[id].pax!) : undefined}
@@ -542,118 +559,128 @@ function FloorPlan({ selId, onTableClick }: { selId: string | null; onTableClick
     />
   )
 
+  // viewBox: 860 × 560 (landscape)
+  // Screenshot analysis (landscape, mentally corrected):
+  //   Top-left area: enclosed grey box (bar/entrance) with T10 + T30 inside
+  //   Top-right: two billiard tables side-by-side (landscape/horizontal orientation)
+  //   Diagonal B3: to the right, below B1/B2, rotated ~-30deg
+  //   Center rows: 52 53 54 / 51 50 58 / (59 far right)
+  //   Bottom section: horizontal grey divider wall
+  //     Row A: 61(blue) 60 67 66
+  //     Row B (enclosed box): 62(blue) 63(blue) 64(green) 65(green)
+  //   Bottom-left: RONDO logo box
+
   return (
     <svg viewBox="0 0 860 560" preserveAspectRatio="xMidYMid meet" className="w-full h-full" style={{ display: "block" }}>
       <defs>
-        <radialGradient id="glow" cx="60%" cy="45%" r="40%">
-          <stop offset="0%" stopColor="rgba(255,160,50,0.06)" />
+        <radialGradient id="ambientGlow" cx="55%" cy="45%" r="38%">
+          <stop offset="0%" stopColor="rgba(255,150,40,0.08)" />
           <stop offset="100%" stopColor="transparent" />
         </radialGradient>
       </defs>
 
-      {/* Background */}
-      <rect x={0} y={0} width={860} height={560} fill="#1a1a1a" />
-      <rect x={0} y={0} width={860} height={560} fill="url(#glow)" />
+      {/* ── Dark textured background ── */}
+      <rect width={860} height={560} fill="#161616" />
+      <rect width={860} height={560} fill="url(#ambientGlow)" />
 
-      {/* Top-left dark zone (bar/entrance) */}
-      <rect x={8} y={8} width={300} height={270} rx={4}
-        fill="rgba(16,16,16,0.9)" stroke="#282828" strokeWidth={1.5} />
+      {/* ═══════════════════════════════════════════════════════════════════
+          ROOM STRUCTURE – grey outlines exactly as in screenshot
+      ═══════════════════════════════════════════════════════════════════ */}
 
-      {/* Diagonal wall lines */}
-      <line x1={308} y1={278} x2={308} y2={400} stroke="#2a2a2a" strokeWidth={1.5} />
-      <line x1={308} y1={400} x2={20} y2={540} stroke="#2a2a2a" strokeWidth={1.5} />
+      {/* Top-left enclosed zone (bar / entrance hall) – L-shaped
+          Screenshot: grey-bordered dark box, top-left corner
+          Contains T10 (top-left) and T30 (bottom of box) */}
+      <rect x={8} y={8} width={290} height={295}
+        fill="rgba(10,10,10,0.85)" stroke="#3a3a3a" strokeWidth={2} rx={3} />
 
-      {/* 3 screen boxes top-right */}
-      <rect x={430} y={8} width={130} height={100} rx={4} fill="rgba(10,10,14,0.95)" stroke="#1e1e1e" strokeWidth={1} />
-      <text x={495} y={62} textAnchor="middle" fill="#1e1e1e" fontSize={12} fontFamily="'Bebas Neue', cursive" letterSpacing="0.1em">SCREEN</text>
-      <rect x={580} y={8} width={130} height={100} rx={4} fill="rgba(10,10,14,0.95)" stroke="#1e1e1e" strokeWidth={1} />
-      <text x={645} y={62} textAnchor="middle" fill="#1e1e1e" fontSize={12} fontFamily="'Bebas Neue', cursive" letterSpacing="0.1em">SCREEN</text>
-      <rect x={730} y={8} width={120} height={100} rx={4} fill="rgba(10,10,14,0.95)" stroke="#1e1e1e" strokeWidth={1} />
-      <text x={790} y={62} textAnchor="middle" fill="#1e1e1e" fontSize={12} fontFamily="'Bebas Neue', cursive" letterSpacing="0.1em">SCREEN</text>
+      {/* Inner diagonal step (the angled wall cutting bottom-right corner of the top-left box) */}
+      <line x1={170} y1={303} x2={298} y2={303} stroke="#3a3a3a" strokeWidth={2} />
+      <line x1={298} y1={8} x2={298} y2={303} stroke="#3a3a3a" strokeWidth={2} />
 
-      {/* Rondo logo box */}
-      <rect x={20} y={420} width={250} height={120} rx={6} fill="rgba(12,12,12,0.95)" />
-      <text x={95} y={476} textAnchor="middle" fill="#c8b830" fontSize={28}
-        fontFamily="'Bebas Neue', cursive" letterSpacing={3}>RONDO</text>
-      <text x={95} y={492} textAnchor="middle" fill="#5a5a3a" fontSize={10} letterSpacing="0.15em">GOOD TIMES</text>
-      <text x={282} y={508} fontSize={22} opacity={0.55}>🌿</text>
+      {/* ── Bottom section horizontal grey divider ──
+          Screenshot: clear horizontal wall/line separating the 61/60/67/66 row
+          from the 62/63/64/65 row */}
+      <rect x={306} y={370} width={548} height={8}
+        fill="#2e2e2e" stroke="#3a3a3a" strokeWidth={1} rx={1} />
 
-      {/* Table 10 – free, top-left */}
-      {tt("t10", 59, 44, 18, 48, 52, 20, 2, 2, 1, 1)}
+      {/* ── Enclosed box for bottom rows (62/63/64/65) ──
+          Screenshot: dark bordered rectangle at very bottom */}
+      <rect x={306} y={378} width={548} height={174}
+        fill="rgba(10,10,10,0.75)" stroke="#3a3a3a" strokeWidth={2} rx={3} />
 
-      {/* Table 30 – free, top-center */}
-      {tt("t30", 184, 44, 18, 48, 52, 20, 2, 2, 1, 1)}
+      {/* ── RONDO logo box – bottom-left ── */}
+      <rect x={8} y={378} width={290} height={174}
+        fill="rgba(8,8,8,0.96)" stroke="#2a2a2a" strokeWidth={1.5} rx={3} />
+      <text x={109} y={452} textAnchor="middle" fill="#c9a84c" fontSize={30}
+        fontFamily="'Bebas Neue', cursive" letterSpacing="0.14em" opacity={0.95}>RONDO</text>
+      <text x={109} y={469} textAnchor="middle" fill="#4a4a28" fontSize={9} letterSpacing="0.22em">GOOD TIMES</text>
+      {/* Plant decorations */}
+      <text x={20} y={538} fontSize={26} opacity={0.6}>🌿</text>
+      <text x={230} y={544} fontSize={18} opacity={0.45}>🌿</text>
 
-      {/* Center: Row 1 → T52, T53, T54 */}
-      {tt("t52", 339, 157, 18, 48, 52, 20, 2, 2, 1, 1)}
-      {tt("t53", 429, 157, 18, 48, 52, 20, 2, 2, 1, 1)}
-      {tt("t54", 521, 153, 22, 66, 68, 30, 3, 3, 2, 2)}
+      {/* ═══════════════════════════════════════════════════════════════════
+          BILLIARD TABLES
+          Screenshot: two LANDSCAPE billiard tables (wider than tall)
+          side-by-side in the top-right area. B3 diagonal below-right.
+          Grey metal rail borders. Green felt. 6 pockets + balls + center line.
+      ═══════════════════════════════════════════════════════════════════ */}
 
-      {/* Center: Row 2 → T51, T50, T58, T59 */}
-      {tt("t51", 339, 255, 18, 48, 52, 20, 2, 2, 1, 1)}
-      {tt("t50", 430, 258, 20, 54, 58, 22, 3, 3, 1, 1)}
-      {tt("t58", 589, 255, 18, 48, 52, 20, 2, 2, 1, 1)}
-      {tt("t59", 729, 255, 18, 48, 52, 20, 2, 2, 1, 1)}
-
-      {/* T64 – present (Licata) */}
-      <TTable id="t64" cx={310} cy={492} vw={20} vh={52} hw={58} hh={20}
-        status="present" label="64" pax={2} name="Licata" time="19:30"
-        sel={selId} onClick={onTableClick} cT={2} cB={2} cL={1} cR={1} />
-
-      {/* T65 – present (Gutsch) */}
-      <TTable id="t65" cx={400} cy={492} vw={20} vh={52} hw={58} hh={20}
-        status="present" label="65" pax={4} name="Gutsch" time="20:00"
-        sel={selId} onClick={onTableClick} cT={2} cB={2} cL={1} cR={1} />
-
-      {/* Enclosed box (bottom-right) */}
-      <rect x={640} y={310} width={210} height={242} rx={4}
-        fill="rgba(14,14,18,0.85)" stroke="#2a2a2a" strokeWidth={1.5} />
-
-      {/* T61 – booked (Guido) */}
-      <TTable id="t61" cx={661} cy={353} vw={18} vh={46} hw={52} hh={18}
-        status="booked" label="61" pax={2} name="Guido" time="01:30"
-        sel={selId} onClick={onTableClick} cT={2} cB={2} cL={1} cR={1} />
-      {/* T60 – free */}
-      <TTable id="t60" cx={751} cy={353} vw={18} vh={46} hw={52} hh={18}
-        status="free" label="60"
-        sel={selId} onClick={onTableClick} cT={2} cB={2} cL={1} cR={1} />
-      {/* T67 – free */}
-      <TTable id="t67" cx={661} cy={441} vw={18} vh={46} hw={52} hh={18}
-        status="free" label="67"
-        sel={selId} onClick={onTableClick} cT={2} cB={2} cL={1} cR={1} />
-      {/* T66 – free */}
-      <TTable id="t66" cx={751} cy={441} vw={18} vh={46} hw={52} hh={18}
-        status="free" label="66"
-        sel={selId} onClick={onTableClick} cT={2} cB={2} cL={1} cR={1} />
-      {/* T62 – booked (Lentino) */}
-      <TTable id="t62" cx={661} cy={508} vw={20} vh={52} hw={58} hh={20}
-        status="booked" label="62" pax={3} name="Lentino" time="19:30"
-        sel={selId} onClick={onTableClick} cT={2} cB={0} cL={1} cR={1} />
-      {/* T63 – booked (Santos d.) */}
-      <TTable id="t63" cx={751} cy={508} vw={20} vh={52} hw={58} hh={20}
-        status="booked" label="63" pax={4} name="Santos d." time="20:00"
-        sel={selId} onClick={onTableClick} cT={2} cB={0} cL={1} cR={1} />
-
-      {/* Billiard 1 – free, top-right */}
-      <BTable id="b1" x={430} y={120} w={108} h={170}
-        status="free" label="BILLARD 1"
+      {/* Billiard 1 – landscape, free, top-right */}
+      <BTable id="b1" x={446} y={16} w={170} h={106}
+        status={tStatus("b1")} label="BILLARD 1"
         sel={selId} onClick={onTableClick} />
 
-      {/* Billiard 2 – reserved (Michelik), next to B1 */}
-      <BTable id="b2" x={580} y={120} w={108} h={170}
-        status="reserved" label="BILLARD 2"
-        name="Michelik" time="19:15 – 21:15"
+      {/* Billiard 2 – landscape, reserved (Michelik), beside B1 */}
+      <BTable id="b2" x={634} y={16} w={170} h={106}
+        status={tStatus("b2")} label="BILLARD 2"
+        name={d.b2.guest} time={`${d.b2.startTime} – ${d.b2.endTime}`}
         sel={selId} onClick={onTableClick} />
 
-      {/* Billiard 3 – free, diagonal bottom-right */}
-      <BTable id="b3" x={500} y={330} w={148} h={94}
-        status="free" label="BILLARD 3"
+      {/* Billiard 3 – diagonal landscape, bottom-right of billiard area */}
+      <BTable id="b3" x={570} y={200} w={174} h={108}
+        status={tStatus("b3")} label="BILLARD 3"
         sel={selId} onClick={onTableClick}
-        transform="rotate(-38, 574, 377)" />
+        transform="rotate(-30, 657, 254)" />
 
-      {/* Decorative plants */}
-      <text x={820} y={320} fontSize={28} opacity={0.6}>🌿</text>
-      <text x={305} y={305} fontSize={20} opacity={0.5}>🌿</text>
+      {/* Plant next to billiards */}
+      <text x={824} y={160} fontSize={22} opacity={0.55}>🌿</text>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          RESTAURANT TABLES
+      ═══════════════════════════════════════════════════════════════════ */}
+
+      {/* T10 – free, top of enclosed top-left box */}
+      {tt("t10", 76, 68,  18, 46, 52, 18,  2, 2, 1, 1)}
+
+      {/* T30 – free, bottom of enclosed top-left box */}
+      {tt("t30", 76, 218, 18, 46, 52, 18,  2, 2, 1, 1)}
+
+      {/* ── Centre area Row 1: 52  53  54 ──
+          Screenshot: T52 + T53 are medium cross shapes, T54 is a LARGE oval/rect
+          (significantly wider, with more chairs on long sides) */}
+      {tt("t52", 348, 148,  18, 46, 52, 18,  2, 2, 1, 1)}
+      {tt("t53", 430, 148,  18, 46, 52, 18,  2, 2, 1, 1)}
+      {/* T54 – large elongated table */}
+      {tt("t54", 540, 148,  24, 54, 110, 26,  3, 3, 2, 2)}
+
+      {/* ── Centre area Row 2: 51  50  58  (59 far right) ──
+          Screenshot: medium crosses in a row, T50 slightly bigger */}
+      {tt("t51", 348, 264,  18, 46, 52, 18,  2, 2, 1, 1)}
+      {tt("t50", 430, 266,  20, 50, 58, 20,  2, 2, 1, 1)}
+      {tt("t58", 524, 264,  18, 46, 52, 18,  2, 2, 1, 1)}
+      {tt("t59", 814, 264,  18, 46, 52, 18,  2, 2, 1, 1)}
+
+      {/* ── Bottom section Row A (above divider): 61  60  67  66 ── */}
+      {tt("t61", 376, 336,  18, 46, 52, 18,  2, 2, 1, 1)}
+      {tt("t60", 460, 336,  18, 46, 52, 18,  2, 2, 1, 1)}
+      {tt("t67", 580, 336,  18, 46, 52, 18,  2, 2, 1, 1)}
+      {tt("t66", 672, 336,  18, 46, 52, 18,  2, 2, 1, 1)}
+
+      {/* ── Bottom section Row B (inside enclosed box): 62  63  64  65 ── */}
+      {tt("t62", 376, 464,  20, 50, 56, 20,  2, 2, 1, 1)}
+      {tt("t63", 468, 464,  20, 50, 56, 20,  2, 2, 1, 1)}
+      {tt("t64", 580, 464,  20, 50, 56, 20,  2, 2, 1, 1)}
+      {tt("t65", 672, 464,  20, 50, 56, 20,  2, 2, 1, 1)}
     </svg>
   )
 }
